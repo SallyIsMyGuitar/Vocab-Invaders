@@ -24,7 +24,7 @@ Ein Vokabel-Spiel für den Englischunterricht im Stil des Klassikers Space Invad
 
 ## Projektstand
 
-- Stand: Meilenstein 1 ist umgesetzt und spielbar (Schiff, Bewegung, Schuss, eine Testwelle mit Wörtern aus der Wortliste).
+- Stand: Meilensteine 1 und 2 sind umgesetzt und spielbar (Schiff, Bewegung, Schuss, Wellen mit steigendem Tempo, Leben, Punkte).
 - Dateien: `index.html`, `css/style.css`, `js/spiel.js` (Spielschleife), `js/wortlisten.js` (Vokabeln).
 
 ## Spielidee (Konzept „Vokabel-Abschuss“)
@@ -73,7 +73,7 @@ Ein Vokabel-Spiel für den Englischunterricht im Stil des Klassikers Space Invad
 Gebaut wird immer nur der Meilenstein, den der Nutzer freigibt, mit Test nach jedem Schritt.
 
 1. Grundgerüst: Schiff, Bewegung, Schuss, eine Testwelle mit Wörtern aus der Wortliste. – **fertig**
-2. Wellen, Leben, Punkte. – **offen**
+2. Wellen, Leben, Punkte: Welle 1 startet mit 5 Wörtern, jede weitere mit einem Wort mehr und etwas schnellerem Tempo; 3 Leben (falscher Treffer oder Wort erreicht den Boden kostet ein Leben); 10 Punkte pro Treffer plus Tempo-Bonus. – **fertig**
 3. Steuerung auf dem iPad, Pause, Titelbild. – **offen**
 4. Feinschliff: Ton, Lesbarkeit, Tempo-Einstellungen. – **offen**
 

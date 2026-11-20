@@ -1,5 +1,6 @@
-// Vocab Invaders – Spielcode (Meilenstein 1: Grundgerüst)
-// Schiff bewegen, schießen und eine Testwelle mit echten Vokabeln absolvieren.
+// Vocab Invaders – Spielcode
+// Meilenstein 1: Grundgerüst (Schiff, Bewegung, Schuss).
+// Meilenstein 2: Wellen mit steigendem Tempo, Leben, Punkte.
 // Grafik wird komplett per Code auf das Canvas gezeichnet, keine Bilddateien.
 
 (() => {
@@ -23,35 +24,14 @@
   window.addEventListener("resize", groesseAnpassen);
   groesseAnpassen();
 
-  // ---------- Wortliste ----------
-  // Alle Units zu einer flachen Liste vereinigen (Daten aus wortlisten.js).
-  const ALLE_WOERTER = Object.values(GLOBAL_WORTLISTE).flat();
-  const TESTWELLE_GROESSE = 5;   // Anzahl Wörter in der Testwelle
-  const ANTWORTEN_ANZAHL = 4;    // Auswahlmöglichkeiten pro Wort
-
-  function zufall(a) {
-    return a[Math.floor(Math.random() * a.length)];
-  }
-
-  // Wählt ein Wort und mischt die richtige Übersetzung mit drei falschen.
-  function neueAufgabe(bereitsBenutzt) {
-    let wort;
-    do {
-      wort = zufall(ALLE_WOERTER);
-    } while (bereitsBenutzt.has(wort.en));
-    bereitsBenutzt.add(wort.en);
-
-    const falsch = [];
-    while (falsch.length < ANTWORTEN_ANZAHL - 1) {
-      const kandidat = zufall(ALLE_WOERTER).de;
-      if (kandidat !== wort.de && !falsch.includes(kandidat)) {
-        falsch.push(kandidat);
-      }
-    }
-    const antworten = [wort, ...falsch.map((de) => ({ de, falsch: true }))]
-      .sort(() => Math.random() - 0.5);
-    return { wort, antworten };
-  }
+  // ---------- Einstellungen der Wellen ----------
+  const ANTWORTEN_ANZAHL = 4;     // Auswahlmöglichkeiten pro Wort
+  const WOERTER_IN_WELLE = (welle) => 4 + welle; // Welle 1: 5 Wörter, dann je eins mehr
+  const WESP_GESCHWINDIGKEIT = (welle) => 18 + (welle - 1) * 5; // pro Welle etwas schneller
+  const PUNKTE_RICHTIG = 10;
+  const PUNKTE_BONUS_TEMPO = 5;   // Bonus, wenn das Wort noch weit oben getroffen wird
+  const LEBEN_BILDSCHIRM = 3;
+  const WELLE_PAUSZEIT = 2.5;     // Sekunden Ansage zwischen den Wellen
 
   // ---------- Spiel-Objekte ----------
   const schiff = {
@@ -63,19 +43,84 @@
   };
 
   const SCHILD_Y = schiff.y - 110; // Höhe der Antwort-Schilder
-  const WESP_GESCHWINDIGKEIT = 22; // Pixel pro Sekunde – bewusst langsam, kein harter Zeitdruck
+
+  // ---------- Spielzustand ----------
+  // "spielt" | "wellenwechsel" | "gameover"
+  let status = "wellenwechsel";
+  let welle = 0;
+  let leben = 0;
+  let punkte = 0;
+  let welleUebrig = 0;        // Wörter, die in der aktuellen Welle noch kommen
+  let wellenWechselRest = 0;  // verbleibende Sekunden der Wellen-Ansage
 
   let aufgabe = null;        // aktuelles Wort samt Antwortmöglichkeiten
   let wesenY = 60;           // Sinkhöhe des Wesens mit dem englischen Wort
-  let schuss = null;         // höchstens ein Schuss gleichzeitig (Meilenstein 1)
+  let schuss = null;         // höchstens ein Schuss gleichzeitig
 
-  const trefferStatistik = { richtig: 0, falsch: 0 };
   const verfehlteWoerter = []; // für die Zusammenfassung am Ende
-  const benutzteWoerter = new Set();
-  let nochUebrig = TESTWELLE_GROESSE;
 
   let trefferZeigen = null;  // { index, richtig, zeit } – Haken/Kreuz über dem Schild
+  let lebenWegZeigen = 0;    // Sekunden, in denen der✔/✘- nach dem Leben zeigt
   let explosion = null;      // { x, y, zeit }
+
+  // ---------- Wortliste ----------
+  // Alle Units zu einer flachen Liste vereinigen (Daten aus wortlisten.js).
+  const ALLE_WOERTER = Object.values(GLOBAL_WORTLISTE).flat();
+
+  // Kartenstapel: komplette Liste mischen und der Reihe nach abziehen.
+  // Läuft der Stapel leer, wird er neu gemischt. So kommt jedes Wort dran,
+  // und doppelte Einträge in der Liste machen keine Probleme.
+  function mischen(a) {
+    const kopie = a.slice();
+    for (let i = kopie.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [kopie[i], kopie[j]] = [kopie[j], kopie[i]];
+    }
+    return kopie;
+  }
+  let kartenstapel = mischen(ALLE_WOERTER);
+
+  function zufall(a) {
+    return a[Math.floor(Math.random() * a.length)];
+  }
+
+  // Wählt ein Wort und mischt die richtige Übersetzung mit drei falschen.
+  function neueAufgabe() {
+    if (kartenstapel.length === 0) kartenstapel = mischen(ALLE_WOERTER);
+    const wort = kartenstapel.pop();
+
+    const falsch = [];
+    while (falsch.length < ANTWORTEN_ANZAHL - 1) {
+      const kandidat = zufall(ALLE_WOERTER).de;
+      if (kandidat !== wort.de && !falsch.includes(kandidat)) {
+        falsch.push(kandidat);
+      }
+    }
+    const antworten = [wort, ...falsch.map((de) => ({ de, falsch: true }))]
+      .sort(() => Math.random() - 0.5);
+    // Schilder gleichmäßig über die Breite verteilen
+    antworten.forEach((a, i) => {
+      a.x = (BREITE / ANTWORTEN_ANZAHL) * (i + 0.5);
+    });
+    return { wort, antworten };
+  }
+
+  // Wellen: mehr Wörter und etwas mehr Tempo je Runde, kein harter Zeitdruck.
+  function welleStarten(nummer) {
+    welle = nummer;
+    welleUebrig = WOERTER_IN_WELLE(welle);
+    aufgabe = neueAufgabe();
+    wesenY = 60;
+    schuss = null;
+    status = "spielt";
+  }
+
+  function spielStarten() {
+    leben = LEBEN_BILDSCHIRM;
+    punkte = 0;
+    verfehlteWoerter.length = 0;
+    welleStarten(1);
+  }
 
   // ---------- Eingabe (PC-Tastatur) ----------
   const tasten = {};
@@ -84,8 +129,13 @@
     if (["Space", "Enter", "ArrowLeft", "ArrowRight"].includes(e.code)) {
       e.preventDefault();
     }
-    if ((e.code === "Space" || e.code === "Enter") && schuss === null && aufgabe) {
-      schuss = { x: schiff.x, y: schiff.y - schiff.hoehe };
+    if (e.code === "Space" || e.code === "Enter") {
+      // Im Spiel schießen, nach dem Ende eine neue Runde starten.
+      if (status === "spielt" && schuss === null) {
+        schuss = { x: schiff.x, y: schiff.y - schiff.hoehe };
+      } else if (status === "gameover") {
+        spielStarten();
+      }
     }
   });
   window.addEventListener("keyup", (e) => {
@@ -93,13 +143,34 @@
   });
 
   // ---------- Spielablauf ----------
-  function naechstesWort() {
-    aufgabe = neueAufgabe(benutzteWoerter);
-    // Schilder gleichmäßig über die Breite verteilen
-    aufgabe.antworten.forEach((a, i) => {
-      a.x = (BREITE / ANTWORTEN_ANZAHL) * (i + 0.5);
-    });
-    wesenY = 60;
+  function lebenVerlieren(wort) {
+    leben--;
+    verfehlteWoerter.push(wort);
+    trefferZeigen = null;
+    lebenWegZeigen = 0.8;
+    if (leben <= 0) {
+      status = "gameover";
+      aufgabe = null;
+      schuss = null;
+    }
+  }
+
+  function wortErledigt(richtig) {
+    welleUebrig--;
+    if (richtig) {
+      punkte += PUNKTE_RICHTIG
+        + Math.max(0, Math.round((SCHILD_Y - wesenY) / SCHILD_Y * PUNKTE_BONUS_TEMPO));
+    }
+    if (welleUebrig > 0) {
+      aufgabe = neueAufgabe();
+      wesenY = 60;
+      schuss = null;
+    } else if (status !== "gameover") {
+      // Welle geschafft: kurze Ansage, dann die nächste Welle.
+      aufgabe = null;
+      status = "wellenwechsel";
+      wellenWechselRest = WELLE_PAUSZEIT;
+    }
   }
 
   function schussAuswerten(schildIndex) {
@@ -108,32 +179,43 @@
     const richtig = !schild.falsch;
     trefferZeigen = { index: schildIndex, richtig, zeit: 0.8 };
     if (richtig) {
-      trefferStatistik.richtig++;
       explosion = { x: BREITE / 2, y: wesenY, zeit: 0.6 };
-      nochUebrig--;
-      if (nochUebrig > 0) {
-        naechstesWort();
-      } else {
-        aufgabe = null; // Testwelle vorbei, Zusammenfassung erscheint
-      }
+      wortErledigt(true);
     } else {
-      trefferStatistik.falsch++;
-      verfehlteWoerter.push(aufgabe.wort);
+      // Falscher Treffer kostet ein Leben (Konzept „Vokabel-Abschuss“).
+      lebenVerlieren(aufgabe.wort);
     }
   }
 
   function update(dt) {
-    if (!aufgabe) return;
+    // Wellen-Ansage herunterzählen, dann nächste Welle starten.
+    if (status === "wellenwechsel") {
+      wellenWechselRest -= dt;
+      if (wellenWechselRest <= 0) welleStarten(welle + 1);
+      return;
+    }
+    if (status !== "spielt") return;
 
     // Bewegung des Schiffs
     if (tasten["ArrowLeft"] || tasten["KeyA"]) schiff.x -= schiff.geschwindigkeit * dt;
     if (tasten["ArrowRight"] || tasten["KeyD"]) schiff.x += schiff.geschwindigkeit * dt;
     schiff.x = Math.max(schiff.breite / 2, Math.min(BREITE - schiff.breite / 2, schiff.x));
 
-    // Wesen mit englischem Wort sinkt langsam herab
-    wesenY += WESP_GESCHWINDIGKEIT * dt;
+    if (!aufgabe) return;
 
-    // Schuss fliegt nach oben und prüft Kollision mit einem Schild
+    // Wesen mit englischem Wort sinkt langsam herab.
+    wesenY += WESP_GESCHWINDIGKEIT(welle) * dt;
+
+    // Erreicht das Wort die Schild-Reihe („Boden“), kostet es ein Leben.
+    if (wesenY >= SCHILD_Y - 30) {
+      trefferZeigen = null;
+      explosion = { x: BREITE / 2, y: wesenY, zeit: 0.6 };
+      lebenVerlieren(aufgabe.wort);
+      if (status === "spielt") wortErledigt(false);
+      return;
+    }
+
+    // Schuss fliegt nach oben und prüft Kollision mit einem Schild.
     if (schuss) {
       schuss.y -= 600 * dt;
       if (schuss.y <= SCHILD_Y + 22) {
@@ -147,6 +229,7 @@
       trefferZeigen.zeit -= dt;
       if (trefferZeigen.zeit <= 0) trefferZeigen = null;
     }
+    if (lebenWegZeigen > 0) lebenWegZeigen -= dt;
     if (explosion) {
       explosion.zeit -= dt;
       if (explosion.zeit <= 0) explosion = null;
@@ -230,7 +313,7 @@
     for (let i = 0; i < 8; i++) {
       const winkel = (Math.PI / 4) * i;
       const r = (0.6 - explosion.zeit) * 120;
-      ctx.fillStyle = "#7bd844";
+      ctx.fillStyle = explosion.zeit > 0.3 ? "#7bd844" : "#ff6b6b";
       ctx.fillRect(
         explosion.x + Math.cos(winkel) * r,
         explosion.y + Math.sin(winkel) * r,
@@ -240,50 +323,75 @@
   }
 
   function zeichneKopfzeile() {
-    // Zähler in großer Schrift mit Symbolen (✔/✘), nicht nur Farbe
+    // Welle, Punkte und Leben in großer Schrift, Symbole statt reiner Farbe
     ctx.font = "bold 24px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
-    ctx.fillStyle = "#7bd844";
-    ctx.fillText("✔ " + trefferStatistik.richtig, 20, 16);
-    ctx.fillStyle = "#ff6b6b";
-    ctx.fillText("✘ " + trefferStatistik.falsch, 120, 16);
+    ctx.fillStyle = "#ffcc4d";
+    ctx.fillText("Welle " + welle, 20, 16);
     ctx.fillStyle = "#ffffff";
+    ctx.fillText("Punkte: " + punkte, 20, 48);
+    // Herzen: volle Herzen rot, verlorene nur als Umriss
     ctx.textAlign = "right";
-    ctx.fillText("Wörter übrig: " + nochUebrig, BREITE - 20, 16);
+    for (let i = 0; i < LEBEN_BILDSCHIRM; i++) {
+      ctx.fillStyle = i < leben ? (lebenWegZeigen > 0 && i === leben ? "#ffffff" : "#ff6b6b") : "#3a3a5a";
+      ctx.fillText("♥", BREITE - 40 - i * 36, 16);
+    }
   }
 
-  function zeichneZusammenfassung() {
-    // Ende der Testwelle: kurze Übersicht für die Nachbesprechung
-    ctx.fillStyle = "rgba(16, 16, 36, 0.9)";
+  function zeichneWellenAnsage() {
+    ctx.fillStyle = "rgba(16, 16, 36, 0.6)";
+    ctx.fillRect(0, 0, BREITE, HOEHE);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#ffcc4d";
+    ctx.font = "bold 44px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
+    if (welle === 0) {
+      ctx.fillText("Vocab Invaders", BREITE / 2, HOEHE / 2 - 40);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "24px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
+      ctx.fillText("Welle 1 beginnt ...", BREITE / 2, HOEHE / 2 + 20);
+    } else {
+      ctx.fillText("Welle " + welle + " geschafft!", BREITE / 2, HOEHE / 2 - 40);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "24px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
+      ctx.fillText("Welle " + (welle + 1) + " kommt ...", BREITE / 2, HOEHE / 2 + 20);
+    }
+  }
+
+  function zeichneGameover() {
+    ctx.fillStyle = "rgba(16, 16, 36, 0.92)";
     ctx.fillRect(0, 0, BREITE, HOEHE);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 38px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
-    ctx.fillText("Testwelle geschafft!", BREITE / 2, 120);
-    ctx.font = "26px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
-    ctx.fillStyle = "#7bd844";
-    ctx.fillText("✔ " + trefferStatistik.richtig + " richtig", BREITE / 2, 180);
-    ctx.fillStyle = "#ff6b6b";
-    ctx.fillText("✘ " + trefferStatistik.falsch + " falsch", BREITE / 2, 220);
+    ctx.font = "bold 44px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
+    ctx.fillText("Game over", BREITE / 2, 110);
+    ctx.font = "bold 30px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
+    ctx.fillStyle = "#ffcc4d";
+    ctx.fillText("Punkte: " + punkte, BREITE / 2, 165);
+    ctx.fillStyle = "#ffcc4d";
+    ctx.fillText("Bis Welle " + welle, BREITE / 2, 205);
 
     if (verfehlteWoerter.length) {
       ctx.fillStyle = "#ffffff";
-      ctx.fillText("Diese Wörter üben:", BREITE / 2, 280);
-      ctx.font = "23px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
-      verfehlteWoerter.forEach((w, i) => {
-        ctx.fillText(w.en + " – " + w.de, BREITE / 2, 320 + i * 34);
+      ctx.font = "25px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
+      ctx.fillText("Diese Wörter üben:", BREITE / 2, 265);
+      // bei vielen Fehlern die Liste begrenzen
+      const anzeigen = verfehlteWoerter.slice(-8);
+      ctx.font = "22px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
+      anzeigen.forEach((w, i) => {
+        ctx.fillText(w.en + " – " + w.de, BREITE / 2, 305 + i * 32);
       });
     } else {
       ctx.fillStyle = "#7bd844";
       ctx.font = "26px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
-      ctx.fillText("Alle Wörter richtig – super!", BREITE / 2, 300);
+      ctx.fillText("Keine Fehler – super!", BREITE / 2, 300);
     }
 
     ctx.fillStyle = "#8888aa";
     ctx.font = "22px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
-    ctx.fillText("Seite neu laden für eine neue Runde", BREITE / 2, HOEHE - 60);
+    ctx.fillText("Leertaste oder Enter für eine neue Runde", BREITE / 2, HOEHE - 50);
   }
 
   function zeichnen() {
@@ -293,16 +401,20 @@
       (canvas.height - HOEHE * skala) / 2
     );
     zeichneHintergrund();
+    if (status === "wellenwechsel") {
+      // Zwischen den Wellen bleibt der Hintergrund mit Sternen sichtbar.
+      zeichneWellenAnsage();
+      return;
+    }
     zeichneKopfzeile();
-    if (aufgabe) {
+    if (status === "spielt") {
       zeichneWesen();
       zeichneSchilder();
       zeichneSchiff();
       zeichneSchuss();
-      zeichneExplosion();
-    } else {
-      zeichneZusammenfassung();
     }
+    zeichneExplosion();
+    if (status === "gameover") zeichneGameover();
   }
 
   // ---------- Spielschleife ----------
@@ -315,6 +427,10 @@
     requestAnimationFrame(schleife);
   }
 
-  naechstesWort();
+  // Start: kurze Ansage, dann beginnt Welle 1 automatisch.
+  status = "wellenwechsel";
+  welle = 0;
+  wellenWechselRest = WELLE_PAUSZEIT;
+  leben = LEBEN_BILDSCHIRM;
   requestAnimationFrame(schleife);
 })();
