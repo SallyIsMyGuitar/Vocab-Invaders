@@ -2,6 +2,7 @@
 // Meilenstein 1: Grundgerüst (Schiff, Bewegung, Schuss).
 // Meilenstein 2: Wellen mit steigendem Tempo, Leben, Punkte.
 // Meilenstein 3: Titelbild, Pause, Touch-Steuerung fürs iPad.
+// Meilenstein 4 (Feinschliff): Ton per Web Audio (Standard aus), Lesbarkeit, Tempo-Einstellung.
 // Grafik wird komplett per Code auf das Canvas gezeichnet, keine Bilddateien.
 
 (() => {
@@ -33,6 +34,42 @@
   const PUNKTE_BONUS_TEMPO = 5;   // Bonus, wenn das Wort noch weit oben getroffen wird
   const LEBEN_BILDSCHIRM = 3;
   const WELLE_PAUSZEIT = 2.5;     // Sekunden Ansage zwischen den Wellen
+  // Tempo-Einstellung auf dem Titelbild; Faktor wirkt auf die Sinkgeschwindigkeit.
+  const TEMPO_FAKTOREN = { "Langsam": 0.7, "Normal": 1, "Schnell": 1.4 };
+  let tempoName = "Normal";
+  const tempoFaktor = () => TEMPO_FAKTOREN[tempoName];
+
+  // ---------- Ton (Web Audio, Standard aus) ----------
+  let tonAn = false;
+  let audioCtx = null; // wird erst beim Einschalten erzeugt (Benutzergeste nötig)
+
+  function tonUmschalten() {
+    tonAn = !tonAn;
+    if (tonAn && !audioCtx) {
+      const AudioKontext = window.AudioContext || window.webkitAudioContext;
+      if (AudioKontext) audioCtx = new AudioKontext();
+    }
+  }
+
+  // Spielt einen kurzen Ton: Frequenz in Hertz, Länge in Sekunden, Form „sine“ oder „square“.
+  function ton(frequenz, dauer, form, start) {
+    if (!tonAn || !audioCtx) return;
+    const t0 = audioCtx.currentTime + (start || 0);
+    const osc = audioCtx.createOscillator();
+    const verstaerker = audioCtx.createGain();
+    osc.type = form || "sine";
+    osc.frequency.value = frequenz;
+    verstaerker.gain.setValueAtTime(0.15, t0);
+    verstaerker.gain.exponentialRampToValueAtTime(0.001, t0 + dauer);
+    osc.connect(verstaerker).connect(audioCtx.destination);
+    osc.start(t0);
+    osc.stop(t0 + dauer);
+  }
+
+  const effektRichtig = () => { ton(660, 0.12); ton(880, 0.18, "sine", 0.1); };
+  const effektFalsch = () => ton(150, 0.25, "square");
+  const effektWelle = () => { ton(523, 0.12); ton(659, 0.12, "sine", 0.12); ton(784, 0.2, "sine", 0.24); };
+  const effektGameover = () => { ton(392, 0.25, "square"); ton(262, 0.5, "square", 0.25); };
 
   // ---------- Spiel-Objekte ----------
   const schiff = {
@@ -141,6 +178,11 @@
       pausiert = !pausiert;
       return;
     }
+    // M schaltet den Ton immer um (Standard: aus).
+    if (e.code === "KeyM") {
+      tonUmschalten();
+      return;
+    }
     tasten[e.code] = true;
     if (["Space", "Enter", "ArrowLeft", "ArrowRight"].includes(e.code)) {
       e.preventDefault();
@@ -189,12 +231,46 @@
     return null;
   }
 
+  // Prüft, ob ein Punkt auf dem Titelbild eine der Tempo-Schaltflächen trifft.
+  function tempoNameTreffen(p) {
+    for (const name of Object.keys(TEMPO_FAKTOREN)) {
+      const r = tempoRechteck(name);
+      if (p.x >= r.x && p.x <= r.x + r.b && p.y >= r.y && p.y <= r.y + r.h) return name;
+    }
+    return null;
+  }
+
+  // Position der Tempo-Schaltflächen auf dem Titelbild (drei nebeneinander).
+  function tempoRechteck(name) {
+    const namen = Object.keys(TEMPO_FAKTOREN);
+    const i = namen.indexOf(name);
+    const b = 190, h = 56;
+    return { x: BREITE / 2 - (b * 3 + 40) / 2 + i * (b + 20), y: 470, b, h };
+  }
+
   canvas.addEventListener("pointerdown", (e) => {
     if (e.pointerType === "touch") touchModus = true;
     const p = zeigerPosition(e);
 
-    // Auf dem Titel oder nach dem Ende startet ein Tipp die nächste Runde.
-    if (status === "titel" || status === "gameover") {
+    // Ton-Symbol oben rechts umschalten (nur solange es sichtbar ist).
+    const dxTon = p.x - (BREITE - 160);
+    const dyTon = p.y - 28;
+    if (status === "spielt" && dxTon * dxTon + dyTon * dyTon <= 26 * 26) {
+      tonUmschalten();
+      return;
+    }
+
+    // Auf dem Titelbild wählt ein Tipp das Tempo; jeder andere Tipp startet.
+    if (status === "titel") {
+      const tempoGetroffen = tempoNameTreffen(p);
+      if (tempoGetroffen) {
+        tempoName = tempoGetroffen;
+        return;
+      }
+      rundeStarten();
+      return;
+    }
+    if (status === "gameover") {
       rundeStarten();
       return;
     }
@@ -230,10 +306,12 @@
     verfehlteWoerter.push(wort);
     trefferZeigen = null;
     lebenWegZeigen = 0.8;
+    effektFalsch();
     if (leben <= 0) {
       status = "gameover";
       aufgabe = null;
       schuss = null;
+      effektGameover();
     }
   }
 
@@ -252,6 +330,7 @@
       aufgabe = null;
       status = "wellenwechsel";
       wellenWechselRest = WELLE_PAUSZEIT;
+      effektWelle();
     }
   }
 
@@ -262,6 +341,7 @@
     trefferZeigen = { index: schildIndex, richtig, zeit: 0.8 };
     if (richtig) {
       explosion = { x: BREITE / 2, y: wesenY, zeit: 0.6 };
+      effektRichtig();
       wortErledigt(true);
     } else {
       // Falscher Treffer kostet ein Leben (Konzept „Vokabel-Abschuss“).
@@ -294,8 +374,8 @@
 
     if (!aufgabe) return;
 
-    // Wesen mit englischem Wort sinkt langsam herab.
-    wesenY += WESP_GESCHWINDIGKEIT(welle) * dt;
+    // Wesen mit englischem Wort sinkt herab; das gewählte Tempo wirkt als Faktor.
+    wesenY += WESP_GESCHWINDIGKEIT(welle) * tempoFaktor() * dt;
 
     // Erreicht das Wort die Schild-Reihe („Boden“), kostet es ein Leben.
     if (wesenY >= SCHILD_Y - 30) {
@@ -328,6 +408,18 @@
   }
 
   // ---------- Zeichnen (Pixelgrafik per Code) ----------
+  // Setzt die Schrift so klein, dass der Text in maxBreite passt (Lesbarkeit).
+  function schriftPassend(text, maxBreite, groesse) {
+    let g = groesse;
+    ctx.font = g + "px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
+    const messung = ctx.measureText(text);
+    const breite = messung && typeof messung.width === "number" ? messung.width : 0;
+    if (breite > maxBreite) {
+      g = Math.max(12, Math.floor(g * maxBreite / breite));
+      ctx.font = g + "px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
+    }
+  }
+
   function zeichneHintergrund() {
     ctx.fillStyle = "#101024";
     ctx.fillRect(0, 0, BREITE, HOEHE);
@@ -352,7 +444,8 @@
     ctx.fillRect(x + 4, wesenY + 14, 8, 6);
 
     ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 30px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
+    schriftPassend(aufgabe.wort.en, 500, 30);
+    ctx.font = "bold " + ctx.font;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(aufgabe.wort.en, x, wesenY - 34);
@@ -364,12 +457,13 @@
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     aufgabe.antworten.forEach((a, i) => {
-      // breite Kachel als Zielscheibe
-      ctx.fillStyle = "#2a2a52";
+      // breite Kachel als Zielscheibe, hell genug für gute Lesbarkeit
+      ctx.fillStyle = "#32325e";
       ctx.fillRect(a.x - 100, SCHILD_Y - 22, 200, 44);
-      ctx.strokeStyle = "#4a4a8a";
+      ctx.strokeStyle = "#6666aa";
       ctx.strokeRect(a.x - 100, SCHILD_Y - 22, 200, 44);
       ctx.fillStyle = "#ffffff";
+      schriftPassend(a.de, 180, 21);
       ctx.fillText(a.de, a.x, SCHILD_Y);
 
       // Haken oder Kreuz direkt über dem Schild – nicht nur Farbe
@@ -480,7 +574,21 @@
     ctx.fillStyle = "#8888aa";
     ctx.font = "24px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
     ctx.fillText("Tippen oder Leertaste zum Starten", BREITE / 2, 400);
-    ctx.fillText("Pfeiltasten bewegen · Leertaste schießt · Esc pausiert", BREITE / 2, 440);
+    ctx.fillText("Pfeiltasten bewegen · Leertaste schießt · Esc pausiert · M schaltet Ton", BREITE / 2, 438);
+
+    // Tempo-Einstellung: drei Schaltflächen, die gewählte ist hervorgehoben
+    ctx.font = "bold 24px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
+    for (const name of Object.keys(TEMPO_FAKTOREN)) {
+      const r = tempoRechteck(name);
+      ctx.fillStyle = name === tempoName ? "#ffcc4d" : "#2a2a52";
+      ctx.fillRect(r.x, r.y, r.b, r.h);
+      ctx.strokeStyle = "#6666aa";
+      ctx.strokeRect(r.x, r.y, r.b, r.h);
+      ctx.fillStyle = name === tempoName ? "#101024" : "#ffffff";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText((name === tempoName ? "✔ " : "") + name, r.x + r.b / 2, r.y + r.h / 2);
+    }
 
     // Pixelschiff als Deko unten
     ctx.fillStyle = "#ffcc4d";
@@ -513,6 +621,12 @@
     ctx.fillText("Welle " + welle, 20, 16);
     ctx.fillStyle = "#ffffff";
     ctx.fillText("Punkte: " + punkte, 20, 48);
+    // Ton-Symbol: Lautsprecher mit Zustand, Tippen oder M schaltet um
+    ctx.textAlign = "center";
+    ctx.fillStyle = tonAn ? "#7bd844" : "#8888aa";
+    ctx.font = "bold 22px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
+    ctx.fillText(tonAn ? "🔊" : "🔇", BREITE - 160, 16);
+    ctx.textAlign = "left";
     // Herzen: volle Herzen rot, verlorene nur als Umriss
     ctx.textAlign = "right";
     for (let i = 0; i < LEBEN_BILDSCHIRM; i++) {

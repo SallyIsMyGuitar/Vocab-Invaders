@@ -8,8 +8,9 @@ Von oben schweben Wörter herab. Das Schiff schießt die richtige deutsche Über
 
 - Im Browser öffnen, am Schul-iPad (Safari, Querformat) oder am PC.
 - Auf dem iPad als Verknüpfung auf den Home-Bildschirm legen (Vollbild).
-- **PC:** Pfeiltasten oder A/D bewegen, Leertaste schießt, Esc pausiert.
-- **iPad:** Steuerkreuz links unten, Feuer-Taste rechts unten.
+- **PC:** Pfeiltasten oder A/D bewegen, Leertaste schießt, Esc pausiert, M schaltet den Ton.
+- **iPad:** Steuerkreuz links unten, Feuer-Taste rechts unten, Pause-Taste oben in der Mitte; das Tempo wird auf dem Titelbild gewählt.
+- Ton ist standardmäßig aus.
 
 ## Technik
 
@@ -20,4 +21,4 @@ Von oben schweben Wörter herab. Das Schiff schießt die richtige deutsche Über
 
 ## Status
 
-Meilensteine 1–3 sind umgesetzt und spielbar: Schiff, Bewegung, Schuss, Wellen mit steigendem Tempo, Leben, Punkte, Titelbild, Pause und Touch-Steuerung – mit Vokabeln aus "Let's go English 2" (6. Klasse, Units 1–8). Der Stand und die offenen Fragen stehen in `AGENTS.md`.
+Alle Meilensteine sind umgesetzt und spielbar: Schiff, Bewegung, Schuss, Wellen mit steigendem Tempo, Leben, Punkte, Titelbild, Pause, Touch-Steuerung, Ton (Standard aus) und Tempo-Einstellung – mit Vokabeln aus "Let's go English 2" (6. Klasse, Units 1–8). Der Stand und die offenen Fragen stehen in `AGENTS.md`.
