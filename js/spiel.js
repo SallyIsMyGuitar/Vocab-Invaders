@@ -337,7 +337,7 @@
     }
     if (status !== "spielt") return;
 
-    // Pause-Taste oben in der Mitte
+    // Pause-Taste oben rechts neben dem Lautsprecher
     if (inRechteck(p, Grafik.BEDIENUNG.pause)) {
       if (!hochformat()) pausiert = !pausiert;
       return;

@@ -24,7 +24,7 @@ Ein Vokabel-Spiel für den Englischunterricht im Stil des Klassikers Space Invad
 
 ## Projektstand
 
-- Stand: Meilensteine 1–4 sind umgesetzt und spielbar (Schiff, Bewegung, Schuss, Wellen mit steigendem Tempo, Leben, Punkte, Titelbild, Pause, Touch-Steuerung fürs iPad, Ton, Lesbarkeit, Tempo-Einstellung).
+- Stand: Meilensteine 1–5 sind umgesetzt und spielbar (Schiff, Bewegung, Schuss, Wellen mit steigendem Tempo, Leben, Punkte, Titelbild, Pause, Touch-Steuerung für iPad und iPhone, Ton, Lesbarkeit, Tempo-Einstellung).
 - Dateien: `index.html`, `css/style.css`, `js/spiel.js` (Spiellogik), `js/grafik.js` (Darstellung), `js/wortlisten.js` (Vokabeln).
 - Überarbeitung nach Analyse (Stufen A–C) umgesetzt: Fehler behoben, Richtig/Falsch-Zähler, Tempo sanfter, Hinweis „Merke“ nach Fehlern, Grafik getrennt.
 
@@ -51,7 +51,7 @@ Ein Vokabel-Spiel für den Englischunterricht im Stil des Klassikers Space Invad
 
 - **Bewegen:** Pfeiltasten oder A/D (PC). Auf iPad/iPhone: Finger in der linken Bildschirmhälfte ziehen, das Schiff folgt relativ (Verstärkung `ZIEH_FAKTOR` in `js/spiel.js`). Anzeige „◀ ziehen ▶“ links unten.
 - **Feuer:** Leertaste oder Enter (PC). Auf iPad/iPhone: Tipp irgendwo in der rechten Bildschirmhälfte, sichtbar als große runde Taste rechts unten; gedrückt halten = Dauerfeuer.
-- **Pause:** Esc (PC). Auf dem iPad eigene Taste.
+- **Pause:** Esc (PC). Auf iPad/iPhone eigene Taste oben rechts, links neben dem Lautsprecher-Symbol (nicht in der Mitte, damit sie das Wort nicht verdeckt).
 - Touch-Tasten werden in Bildschirm-Koordinaten am Rand gezeichnet (nicht im Spielfeld), Größe abhängig vom Bildschirm, mit Abstand zur Safe Area (Notch, Home-Leiste).
 
 ## Eingabe und Wortlisten

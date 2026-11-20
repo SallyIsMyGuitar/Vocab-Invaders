@@ -19,7 +19,7 @@ const Grafik = (() => {
   // Bedienflächen im Spielfeld (Rechtecke: x, y, b = Breite, h = Höhe; Kreise: x, y, r).
   // Ziehfeld und Feuertaste liegen dagegen am Bildschirmrand (siehe touchLayout).
   const BEDIENUNG = {
-    pause:  { x: 390, y: 0,   b: 120, h: 72 },  // Tippfläche der Pause-Taste oben in der Mitte
+    pause:  { x: 640, y: 0,   b: 60,  h: 64 },  // Tippfläche der Pause-Taste links neben dem Lautsprecher
     ton:    { x: 740, y: 28,  r: 26 },          // Lautsprecher-Symbol oben rechts
   };
 
@@ -200,13 +200,16 @@ const Grafik = (() => {
     }
   }
 
-  // Pause-Taste oben in der Mitte (im Spielfeld, nur auf Touch-Geräten)
+  // Pause-Taste oben rechts neben dem Lautsprecher (im Spielfeld, nur auf Touch-Geräten).
+  // Nicht in der Mitte, damit sie das herabschwebende Wort nicht verdeckt.
   function zeichnePauseTaste(a) {
     if (!a.touchModus) return;
-    ctx.globalAlpha = 0.4;
+    const p = BEDIENUNG.pause;
+    const mx = p.x + p.b / 2;  // Mitte der Tippfläche
+    ctx.globalAlpha = 0.6;
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(BREITE / 2 - 18, 22, 10, 28);
-    ctx.fillRect(BREITE / 2 + 8, 22, 10, 28);
+    ctx.fillRect(mx - 12, 17, 8, 24);
+    ctx.fillRect(mx + 4, 17, 8, 24);
     ctx.globalAlpha = 1;
   }
 
@@ -357,7 +360,7 @@ const Grafik = (() => {
     ctx.fillText("Pause", BREITE / 2, HOEHE / 2 - 20);
     ctx.fillStyle = "#8888aa";
     schrift(24);
-    ctx.fillText("Esc oder Pause-Taste (oben) zum Weiterspielen", BREITE / 2, HOEHE / 2 + 30);
+    ctx.fillText("Esc oder Pause-Taste (oben rechts) zum Weiterspielen", BREITE / 2, HOEHE / 2 + 30);
   }
 
   // Oben links: Welle, Punkte und Zähler. Oben rechts: Ton und Leben.
