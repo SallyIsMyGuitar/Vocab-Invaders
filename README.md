@@ -7,10 +7,10 @@ Von oben schweben Wörter herab. Das Schiff schießt die richtige deutsche Über
 ## Spielen
 
 - Im Browser öffnen, am Schul-iPad (Safari, Querformat) oder am PC.
-- Auf dem iPad als Verknüpfung auf den Home-Bildschirm legen (Vollbild).
+- Auf iPad oder iPhone als Verknüpfung auf den Home-Bildschirm legen (Vollbild).
 - **PC:** Pfeiltasten oder A/D bewegen, Leertaste schießt, Esc pausiert, M schaltet den Ton.
 - **PC, Titelbild:** Pfeiltasten oder A/D wählen die Schwierigkeit (Langsam / Normal / Schnell), Leertaste startet.
-- **iPad:** Steuerkreuz links unten, Feuer-Taste rechts unten, Pause-Taste oben in der Mitte; das Tempo wird auf dem Titelbild gewählt.
+- **iPad/iPhone (Querformat):** In der linken Bildschirmhälfte mit dem Finger ziehen – das Schiff folgt. Tippen in der rechten Hälfte (Feuer-Taste rechts unten) schießt, gedrückt halten = Dauerfeuer. Pause-Taste oben in der Mitte; das Tempo wird auf dem Titelbild gewählt. Im Hochformat erscheint der Hinweis, das Gerät zu drehen.
 - Oben links zeigen ✔ und ✘ die richtigen und falschen Treffer der Runde.
 - Nach einem Fehler zeigt „Merke“ kurz die richtige Übersetzung.
 - Am Ende der Runde erscheint die Liste „Diese Wörter üben“ zur Nachbesprechung.

@@ -16,14 +16,26 @@ const Grafik = (() => {
   const SCHILD_BREITE = 200;   // breite Kachel als Zielscheibe
   const SCHILD_HOEHE = 56;
 
-  // Bedienflächen auf dem iPad (Rechtecke: x, y, b = Breite, h = Höhe; Kreise: x, y, r)
+  // Bedienflächen im Spielfeld (Rechtecke: x, y, b = Breite, h = Höhe; Kreise: x, y, r).
+  // Ziehfeld und Feuertaste liegen dagegen am Bildschirmrand (siehe touchLayout).
   const BEDIENUNG = {
-    links:  { x: 30,  y: 450, b: 100, h: 120 }, // Steuerkreuz: Pfeil links
-    rechts: { x: 150, y: 450, b: 100, h: 120 }, // Steuerkreuz: Pfeil rechts
-    feuer:  { x: 790, y: 510, r: 65 },          // Feuer-Taste rechts unten
-    pause:  { x: 420, y: 14,  b: 60, h: 44 },   // Pause-Taste oben in der Mitte
+    pause:  { x: 390, y: 0,   b: 120, h: 72 },  // Tippfläche der Pause-Taste oben in der Mitte
     ton:    { x: 740, y: 28,  r: 26 },          // Lautsprecher-Symbol oben rechts
   };
+
+  // Lage der Touch-Tasten in CSS-Pixeln des Bildschirms, mit Abstand zur Safe Area.
+  // Die Größe hängt vom Bildschirm ab, nicht von der Spielfeld-Skalierung:
+  // auf dem iPhone bleiben die Tasten so groß genug für den Daumen.
+  function touchLayout(bs) {
+    const r = Math.max(44, Math.min(72, Math.min(bs.breite, bs.hoehe) * 0.12)); // Radius Feuertaste
+    const rand = 16;
+    const y = bs.hoehe - bs.safe.unten - rand - r;
+    return {
+      feuer: { x: bs.breite - bs.safe.rechts - rand - r, y, r },
+      // Ziehfeld-Anzeige links unten: abgerundeter Balken mit Pfeilen
+      ziehen: { x: bs.safe.links + rand, y: y - r * 0.55, b: r * 3.4, h: r * 1.1 },
+    };
+  }
 
   // Tempo-Schaltflächen auf dem Titelbild, nebeneinander zentriert (i = Index 0, 1, 2).
   function tempoRechteck(i) {
@@ -188,53 +200,101 @@ const Grafik = (() => {
     }
   }
 
-  // Halbtransparente Tasten mit dickem Umriss (Touch, iPad)
-  function zeichneTouchTasten(a) {
+  // Pause-Taste oben in der Mitte (im Spielfeld, nur auf Touch-Geräten)
+  function zeichnePauseTaste(a) {
     if (!a.touchModus) return;
     ctx.globalAlpha = 0.4;
-
-    // Steuerkreuz links unten: Pfeil links
-    const l = BEDIENUNG.links;
-    ctx.fillStyle = a.touchAktiv("links") ? "#8888aa" : "#ffffff";
-    ctx.fillRect(l.x, l.y, l.b, l.h);
-    ctx.fillStyle = "#101024";
-    ctx.beginPath();
-    ctx.moveTo(70, 480);
-    ctx.lineTo(45, 510);
-    ctx.lineTo(70, 540);
-    ctx.closePath();
-    ctx.fill();
-
-    // Pfeil rechts
-    const r = BEDIENUNG.rechts;
-    ctx.fillStyle = a.touchAktiv("rechts") ? "#8888aa" : "#ffffff";
-    ctx.fillRect(r.x, r.y, r.b, r.h);
-    ctx.fillStyle = "#101024";
-    ctx.beginPath();
-    ctx.moveTo(210, 480);
-    ctx.lineTo(235, 510);
-    ctx.lineTo(210, 540);
-    ctx.closePath();
-    ctx.fill();
-
-    // Feuer-Taste rechts unten: großer Kreis
-    const f = BEDIENUNG.feuer;
-    ctx.fillStyle = a.touchAktiv("feuer") ? "#8888aa" : "#ffffff";
-    ctx.beginPath();
-    ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#101024";
-    schrift(26, "bold");
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("FEUER", f.x, f.y);
-
-    // Pause-Taste oben in der Mitte (zwei Balken)
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(BREITE / 2 - 18, 22, 10, 28);
     ctx.fillRect(BREITE / 2 + 8, 22, 10, 28);
+    ctx.globalAlpha = 1;
+  }
+
+  // Abgerundetes Rechteck als Pfad (ohne roundRect, das ältere Safari-Versionen nicht kennen)
+  function rundRechteckPfad(x, y, b, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + b - r, y);
+    ctx.arc(x + b - r, y + r, r, -Math.PI / 2, 0);
+    ctx.lineTo(x + b, y + h - r);
+    ctx.arc(x + b - r, y + h - r, r, 0, Math.PI / 2);
+    ctx.lineTo(x + r, y + h);
+    ctx.arc(x + r, y + h - r, r, Math.PI / 2, Math.PI);
+    ctx.lineTo(x, y + r);
+    ctx.arc(x + r, y + r, r, Math.PI, Math.PI * 1.5);
+    ctx.closePath();
+  }
+
+  // Touch-Tasten am Bildschirmrand (iPad/iPhone). Gezeichnet in CSS-Pixeln des Bildschirms.
+  // Die Tasten zeigen nur an, wo man tippt: Die ganze linke Hälfte ist Ziehfeld,
+  // die ganze rechte Hälfte löst Feuer aus.
+  function zeichneTouchTasten(a) {
+    const bs = a.bildschirm;
+    const l = touchLayout(bs);
+    ctx.setTransform(bs.dpr, 0, 0, bs.dpr, 0, 0);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    // Ziehfeld links unten: Balken mit Pfeilen und „ziehen“
+    const z = l.ziehen;
+    ctx.globalAlpha = a.touchAktiv("ziehen") ? 0.6 : 0.3;
+    ctx.fillStyle = "#ffffff";
+    rundRechteckPfad(z.x, z.y, z.b, z.h, z.h / 2);
+    ctx.fill();
+    ctx.fillStyle = "#101024";
+    const pf = z.h * 0.28; // Pfeilgröße
+    const my = z.y + z.h / 2;
+    ctx.beginPath();
+    ctx.moveTo(z.x + z.h * 0.35, my);
+    ctx.lineTo(z.x + z.h * 0.35 + pf * 1.2, my - pf);
+    ctx.lineTo(z.x + z.h * 0.35 + pf * 1.2, my + pf);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(z.x + z.b - z.h * 0.35, my);
+    ctx.lineTo(z.x + z.b - z.h * 0.35 - pf * 1.2, my - pf);
+    ctx.lineTo(z.x + z.b - z.h * 0.35 - pf * 1.2, my + pf);
+    ctx.closePath();
+    ctx.fill();
+    schrift(Math.round(z.h * 0.36), "bold");
+    ctx.fillText("ziehen", z.x + z.b / 2, my);
+
+    // Feuertaste rechts unten: großer Kreis
+    const f = l.feuer;
+    ctx.globalAlpha = a.touchAktiv("feuer") ? 0.6 : 0.3;
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 0.8;
+    ctx.fillStyle = "#101024";
+    schrift(Math.round(f.r * 0.36), "bold");
+    ctx.fillText("FEUER", f.x, f.y);
 
     ctx.globalAlpha = 1;
+  }
+
+  // Hinweis im Hochformat (iPad/iPhone): Gerät drehen. Deckt den ganzen Bildschirm ab.
+  function zeichneDrehHinweis(a) {
+    const bs = a.bildschirm;
+    ctx.setTransform(bs.dpr, 0, 0, bs.dpr, 0, 0);
+    ctx.fillStyle = "#101024";
+    ctx.fillRect(0, 0, bs.breite, bs.hoehe);
+    const mx = bs.breite / 2;
+    const my = bs.hoehe / 2;
+    // Pixel-Gerät, quer gelegt
+    ctx.strokeStyle = "#ffcc4d";
+    ctx.lineWidth = 6;
+    ctx.strokeRect(mx - 60, my - 110, 120, 76);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#ffcc4d";
+    schrift(40, "bold");
+    ctx.fillText("↻", mx, my - 72);
+    ctx.fillStyle = "#ffffff";
+    schrift(26, "bold");
+    ctx.fillText("Bitte das Gerät", mx, my + 10);
+    ctx.fillText("quer halten", mx, my + 44);
   }
 
   function zeichneTitel(a) {
@@ -297,7 +357,7 @@ const Grafik = (() => {
     ctx.fillText("Pause", BREITE / 2, HOEHE / 2 - 20);
     ctx.fillStyle = "#8888aa";
     schrift(24);
-    ctx.fillText("Esc oder Pause-Taste zum Weiterspielen", BREITE / 2, HOEHE / 2 + 30);
+    ctx.fillText("Esc oder Pause-Taste (oben) zum Weiterspielen", BREITE / 2, HOEHE / 2 + 30);
   }
 
   // Oben links: Welle, Punkte und Zähler. Oben rechts: Ton und Leben.
@@ -413,6 +473,12 @@ const Grafik = (() => {
   // c: Canvas-Kontext, a: Ansicht (Momentaufnahme des Spielzustands, wird nicht verändert)
   function zeichne(c, a) {
     ctx = c;
+    // Ganzen Bildschirm löschen – auch die Ränder neben dem Spielfeld,
+    // sonst legen sich die halbtransparenten Touch-Tasten Bild für Bild übereinander.
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = "#101024";
+    ctx.fillRect(0, 0, a.geraetBreite, a.geraetHoehe);
     ctx.setTransform(
       a.skala, 0, 0, a.skala,
       (a.geraetBreite - BREITE * a.skala) / 2,
@@ -421,11 +487,13 @@ const Grafik = (() => {
     zeichneHintergrund(a);
     if (a.status === "titel") {
       zeichneTitel(a);
+      zeichneBildschirmEbene(a);
       return;
     }
     if (a.status === "wellenwechsel") {
       // Zwischen den Wellen bleibt der Hintergrund mit Sternen sichtbar.
       zeichneWellenAnsage(a);
+      zeichneBildschirmEbene(a);
       return;
     }
     zeichneKopfzeile(a);
@@ -435,11 +503,18 @@ const Grafik = (() => {
       zeichneHinweis(a);
       zeichneSchiff(a);
       zeichneSchuss(a);
-      zeichneTouchTasten(a);
+      zeichnePauseTaste(a);
       if (a.pausiert) zeichnePause();
     }
     zeichneExplosion(a);
     if (a.status === "gameover") zeichneGameover(a);
+    zeichneBildschirmEbene(a);
+  }
+
+  // Ebene über dem Spielfeld in Bildschirm-Koordinaten: Touch-Tasten und Dreh-Hinweis.
+  function zeichneBildschirmEbene(a) {
+    if (a.status === "spielt" && a.touchModus && !a.pausiert && !a.hochformat) zeichneTouchTasten(a);
+    if (a.hochformat) zeichneDrehHinweis(a);
   }
 
   return { zeichne, BREITE, HOEHE, BEDIENUNG, SCHILD_HOEHE, tempoRechteck };

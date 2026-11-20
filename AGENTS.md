@@ -40,7 +40,7 @@ Ein Vokabel-Spiel für den Englischunterricht im Stil des Klassikers Space Invad
 
 ## Plattform und Technik
 
-- **Zielgerät:** Schul-iPads mit Safari, Touch-Steuerung, Querformat. Zusätzlich Tastatursteuerung am PC.
+- **Zielgerät:** Schul-iPads und iPhones mit Safari, Touch-Steuerung, nur Querformat (im Hochformat Hinweis „Bitte das Gerät quer halten“, Spiel pausiert). Zusätzlich Tastatursteuerung am PC.
 - **Hosting:** GitHub Pages. Als Verknüpfung auf dem Home-Bildschirm nutzbar (Vollbild).
 - **Aufbau:** HTML, CSS und getrennte JavaScript-Dateien per Script-Tags. Kein Build-Schritt, kein Bundler.
 - **Grafik:** komplett per Code gezeichnete Pixelgrafik (Canvas). Die Grafik bleibt getrennt vom Spielcode, damit sie später ersetzt werden kann.
@@ -49,10 +49,10 @@ Ein Vokabel-Spiel für den Englischunterricht im Stil des Klassikers Space Invad
 
 ## Steuerung
 
-- **Bewegen:** Pfeiltasten oder A/D (PC). Auf dem iPad halbtransparentes Steuerkreuz links unten.
-- **Feuer:** Leertaste oder Enter (PC). Auf dem iPad eine große runde Taste rechts unten.
+- **Bewegen:** Pfeiltasten oder A/D (PC). Auf iPad/iPhone: Finger in der linken Bildschirmhälfte ziehen, das Schiff folgt relativ (Verstärkung `ZIEH_FAKTOR` in `js/spiel.js`). Anzeige „◀ ziehen ▶“ links unten.
+- **Feuer:** Leertaste oder Enter (PC). Auf iPad/iPhone: Tipp irgendwo in der rechten Bildschirmhälfte, sichtbar als große runde Taste rechts unten; gedrückt halten = Dauerfeuer.
 - **Pause:** Esc (PC). Auf dem iPad eigene Taste.
-- Touch-Tasten großzügig gestaltet, Safe-Area beachten.
+- Touch-Tasten werden in Bildschirm-Koordinaten am Rand gezeichnet (nicht im Spielfeld), Größe abhängig vom Bildschirm, mit Abstand zur Safe Area (Notch, Home-Leiste).
 
 ## Eingabe und Wortlisten
 
@@ -77,6 +77,7 @@ Gebaut wird immer nur der Meilenstein, den der Nutzer freigibt, mit Test nach je
 2. Wellen, Leben, Punkte: Welle 1 startet mit 5 Wörtern, jede weitere mit einem Wort mehr und etwas schnellerem Tempo; 3 Leben (falscher Treffer oder Wort erreicht den Boden kostet ein Leben); 10 Punkte pro Treffer plus Tempo-Bonus. – **fertig**
 3. Steuerung auf dem iPad, Pause, Titelbild: halbtransparentes Steuerkreuz links unten und Feuertaste rechts unten (erscheinen beim ersten Tipp), Pause-Taste oben sowie Esc, Titelbild mit Start per Tipp oder Leertaste. – **fertig**
 4. Feinschliff: Ton (Web Audio, Standard aus, Umschalten per M oder Tippen aufs Lautsprecher-Symbol), Lesbarkeit (Text passt sich Schildbreite an, hellere Schilder), Tempo-Einstellung (Langsam/Normal/Schnell auf dem Titelbild). – **fertig**
+5. Touch-Steuerung überarbeitet (iPad und iPhone): Ziehen links statt Steuerkreuz, Feuer rechts, Tasten am Bildschirmrand mit Safe Area, kein Zoom/Lupe, Hinweis im Hochformat. – **fertig**
 
 ## Offene Fragen (vor der Umsetzung mit dem Nutzer klären)
 

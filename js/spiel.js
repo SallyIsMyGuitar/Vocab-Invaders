@@ -19,14 +19,40 @@
   const HOEHE = Grafik.HOEHE;
   let skala = 1;
 
+  // Bildschirm in CSS-Pixeln samt Safe Area (Notch, Home-Leiste).
+  // Die Touch-Tasten werden in diesen Koordinaten gezeichnet, nicht im Spielfeld.
+  const bildschirm = { breite: 0, hoehe: 0, dpr: 1, safe: { oben: 0, rechts: 0, unten: 0, links: 0 } };
+  const safeMesser = document.getElementById("safearea");
+
   function groesseAnpassen() {
     const dpr = window.devicePixelRatio || 1;
     canvas.width = window.innerWidth * dpr;
     canvas.height = window.innerHeight * dpr;
     skala = Math.min(canvas.width / BREITE, canvas.height / HOEHE);
+
+    bildschirm.breite = window.innerWidth;
+    bildschirm.hoehe = window.innerHeight;
+    bildschirm.dpr = dpr;
+    if (safeMesser) {
+      const st = getComputedStyle(safeMesser);
+      bildschirm.safe.oben = parseFloat(st.paddingTop) || 0;
+      bildschirm.safe.rechts = parseFloat(st.paddingRight) || 0;
+      bildschirm.safe.unten = parseFloat(st.paddingBottom) || 0;
+      bildschirm.safe.links = parseFloat(st.paddingLeft) || 0;
+    }
   }
   window.addEventListener("resize", groesseAnpassen);
+  // Safari meldet die neue Größe nach dem Drehen teils verzögert: kurz danach nochmals messen.
+  window.addEventListener("orientationchange", () => setTimeout(groesseAnpassen, 300));
   groesseAnpassen();
+
+  // Touch-Gerät (iPad/iPhone)? Dann gilt nur das Querformat.
+  const istTouchGeraet = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+  const hochformat = () => istTouchGeraet && window.innerHeight > window.innerWidth;
+
+  // Safari: Zwei-Finger-Zoom und Doppeltipp-Zoom abschalten (user-scalable wird teils ignoriert).
+  document.addEventListener("gesturestart", (e) => e.preventDefault());
+  document.addEventListener("dblclick", (e) => e.preventDefault());
 
   // ---------- Einstellungen der Wellen ----------
   const ANTWORTEN_ANZAHL = 4;     // Auswahlmöglichkeiten pro Wort
@@ -238,9 +264,14 @@
     zeigerAuf.clear();
   });
 
-  // ---------- Eingabe (Touch: iPad-Steuerkreuz und Feuertaste) ----------
-  // Der Finger bleibt so lange auf einer Taste, wie der Zeiger existiert.
-  const zeigerAuf = new Map();   // pointerId -> "links" | "rechts" | "feuer" | "pause"
+  // ---------- Eingabe (Touch: iPad und iPhone) ----------
+  // Linke Bildschirmhälfte: Finger ziehen, das Schiff folgt der Bewegung.
+  // Rechte Bildschirmhälfte: Feuer (gehalten = Dauerfeuer, sobald der Schuss frei ist).
+  // Jeder Finger (pointerId) merkt sich seine Aufgabe: { art: "ziehen" | "feuer", letztesX }
+  const zeigerAuf = new Map();
+  // Verstärkung beim Ziehen: 1 cm Fingerweg bewegt das Schiff um 1,6 cm auf dem Bildschirm.
+  // So reicht auch auf dem iPhone ein kurzer Daumenweg über das ganze Spielfeld.
+  const ZIEH_FAKTOR = 1.6;
 
   // Bildschirm-Koordinate in Spielfeld-Koordinate umrechnen.
   function zeigerPosition(e) {
@@ -258,22 +289,6 @@
     return p.x >= r.x && p.x <= r.x + r.b && p.y >= r.y && p.y <= r.y + r.h;
   }
 
-  // Prüft, welchen Bereich eines Touch-Bildschirms ein Punkt trifft.
-  function flaecheTreffen(p) {
-    if (status === "spielt") {
-      const b = Grafik.BEDIENUNG;
-      if (inRechteck(p, b.links)) return "links";
-      if (inRechteck(p, b.rechts)) return "rechts";
-      // Feuertaste rechts unten: großer Kreis
-      const dx = p.x - b.feuer.x;
-      const dy = p.y - b.feuer.y;
-      if (dx * dx + dy * dy <= b.feuer.r * b.feuer.r) return "feuer";
-      // Pause-Taste oben in der Mitte
-      if (inRechteck(p, b.pause)) return "pause";
-    }
-    return null;
-  }
-
   // Prüft, ob ein Punkt auf dem Titelbild eine der Tempo-Schaltflächen trifft.
   function tempoNameTreffen(p) {
     const namen = Object.keys(TEMPO_FAKTOREN);
@@ -283,21 +298,31 @@
     return null;
   }
 
+  function schiessen() {
+    if (schuss === null) schuss = { x: schiff.x, y: schiff.y - schiff.hoehe };
+  }
+
   canvas.addEventListener("pointerdown", (e) => {
-    if (e.pointerType === "touch") touchModus = true;
+    if (e.pointerType === "touch") {
+      touchModus = true;
+      e.preventDefault();
+    }
     const p = zeigerPosition(e);
 
     // Ton-Symbol oben rechts umschalten (sichtbar außer auf dem Titelbild).
+    // Die Tippfläche ist etwas größer als das Symbol, damit sie auch auf dem iPhone gut trifft.
     const t = Grafik.BEDIENUNG.ton;
     const dxTon = p.x - t.x;
     const dyTon = p.y - t.y;
-    if (status !== "titel" && dxTon * dxTon + dyTon * dyTon <= t.r * t.r) {
+    const rTon = t.r + 14;
+    if (status !== "titel" && dxTon * dxTon + dyTon * dyTon <= rTon * rTon) {
       tonUmschalten();
       return;
     }
 
     // Auf dem Titelbild wählt ein Tipp das Tempo; jeder andere Tipp startet.
     if (status === "titel") {
+      if (hochformat()) return; // erst drehen, dann starten
       const tempoGetroffen = tempoNameTreffen(p);
       if (tempoGetroffen) {
         tempoName = tempoGetroffen;
@@ -310,28 +335,48 @@
       if (gameoverSperre <= 0) rundeStarten();
       return;
     }
-    // Pause-Taste gilt nur im laufenden Spiel.
-    const flaeche = flaecheTreffen(p);
-    if (flaeche === "pause") {
-      pausiert = !pausiert;
+    if (status !== "spielt") return;
+
+    // Pause-Taste oben in der Mitte
+    if (inRechteck(p, Grafik.BEDIENUNG.pause)) {
+      if (!hochformat()) pausiert = !pausiert;
       return;
     }
-    if (status === "spielt" && !pausiert && flaeche) {
-      zeigerAuf.set(e.pointerId, flaeche);
-      if (flaeche === "feuer" && schuss === null) {
-        schuss = { x: schiff.x, y: schiff.y - schiff.hoehe };
-      }
+    if (pausiert) return;
+
+    // Linke oder rechte Bildschirmhälfte (CSS-Pixel, unabhängig vom Spielfeld)
+    if (e.clientX < window.innerWidth / 2) {
+      zeigerAuf.set(e.pointerId, { art: "ziehen", letztesX: e.clientX });
+    } else {
+      zeigerAuf.set(e.pointerId, { art: "feuer" });
+      schiessen();
     }
-    if (e.pointerType === "touch") e.preventDefault();
+    // Finger bleibt dem Canvas zugeordnet, auch wenn er kurz darüber hinausrutscht.
+    if (canvas.setPointerCapture) {
+      try { canvas.setPointerCapture(e.pointerId); } catch (fehler) { /* ohne Capture weiter */ }
+    }
   });
+
+  // Ziehen: Das Schiff folgt dem Fingerweg (relativ, nicht zur Fingerposition springend).
+  canvas.addEventListener("pointermove", (e) => {
+    const z = zeigerAuf.get(e.pointerId);
+    if (!z || z.art !== "ziehen") return;
+    const dxGeraet = (e.clientX - z.letztesX) * (canvas.width / window.innerWidth);
+    z.letztesX = e.clientX;
+    if (status !== "spielt" || pausiert) return;
+    schiff.x += dxGeraet / skala * ZIEH_FAKTOR;
+    schiff.x = Math.max(schiff.breite / 2, Math.min(BREITE - schiff.breite / 2, schiff.x));
+    e.preventDefault();
+  });
+
   const zeigerLoeschen = (e) => zeigerAuf.delete(e.pointerId);
   canvas.addEventListener("pointerup", zeigerLoeschen);
   canvas.addEventListener("pointercancel", zeigerLoeschen);
 
-  // Touch-Enden abfragen: Taste gehalten, solange ein Zeiger darauf liegt.
-  function touchAktiv(name) {
-    for (const flaeche of zeigerAuf.values()) {
-      if (flaeche === name) return true;
+  // Ist gerade ein Finger mit dieser Aufgabe ("ziehen" oder "feuer") auf dem Bildschirm?
+  function touchAktiv(art) {
+    for (const z of zeigerAuf.values()) {
+      if (z.art === art) return true;
     }
     return false;
   }
@@ -416,18 +461,21 @@
       if (wellenWechselRest <= 0) welleStarten(welle + 1);
       return;
     }
+    // Hochformat auf iPad/iPhone: Spiel anhalten, bis das Gerät gedreht ist.
+    if (status === "spielt" && hochformat() && !pausiert) {
+      pausiert = true;
+      zeigerAuf.clear();
+    }
     if (status !== "spielt" || pausiert) return;
 
-    // Bewegung des Schiffs: Tastatur oder Steuerkreuz
-    const links = tasten["ArrowLeft"] || tasten["KeyA"] || touchAktiv("links");
-    const rechts = tasten["ArrowRight"] || tasten["KeyD"] || touchAktiv("rechts");
+    // Bewegung des Schiffs per Tastatur (Touch-Ziehen wirkt direkt in pointermove)
+    const links = tasten["ArrowLeft"] || tasten["KeyA"];
+    const rechts = tasten["ArrowRight"] || tasten["KeyD"];
     if (links) schiff.x -= schiff.geschwindigkeit * dt;
     if (rechts) schiff.x += schiff.geschwindigkeit * dt;
 
     // Feuertaste gedrückt halten schießt, sobald der Schuss frei ist.
-    if (touchAktiv("feuer") && schuss === null) {
-      schuss = { x: schiff.x, y: schiff.y - schiff.hoehe };
-    }
+    if (touchAktiv("feuer")) schiessen();
     schiff.x = Math.max(schiff.breite / 2, Math.min(BREITE - schiff.breite / 2, schiff.x));
 
     if (!aufgabe) return;
@@ -466,6 +514,7 @@
       trefferZeigen, hinweis, explosion, lebenWegZeigen, gameoverSperre,
       verfehlt: verfehlteWoerter, touchAktiv,
       skala, geraetBreite: canvas.width, geraetHoehe: canvas.height,
+      bildschirm, hochformat: hochformat(),
     };
   }
 

@@ -2,13 +2,20 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <!-- Kein Zoomen per Doppeltipp oder Zwei-Finger-Geste; viewport-fit=cover nutzt den ganzen iPhone-Bildschirm -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <!-- Als Verknüpfung auf dem Home-Bildschirm im Vollbild starten (iPad/iPhone) -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Vocab Invaders</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <!-- Spielfläche: alles wird auf dieses Canvas gezeichnet -->
   <canvas id="spielfeld"></canvas>
+  <!-- Unsichtbarer Messpunkt: liefert die Safe Area (Notch, Home-Leiste) an den Spielcode -->
+  <div id="safearea" aria-hidden="true"></div>
 
   <!-- Spielcode -->
   <script src="js/wortlisten.js"></script>
