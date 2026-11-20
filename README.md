@@ -9,6 +9,7 @@ Von oben schweben Wörter herab. Das Schiff schießt die richtige deutsche Über
 - Im Browser öffnen, am Schul-iPad (Safari, Querformat) oder am PC.
 - Auf dem iPad als Verknüpfung auf den Home-Bildschirm legen (Vollbild).
 - **PC:** Pfeiltasten oder A/D bewegen, Leertaste schießt, Esc pausiert, M schaltet den Ton.
+- **PC, Titelbild:** Pfeiltasten oder A/D wählen die Schwierigkeit (Langsam / Normal / Schnell), Leertaste startet.
 - **iPad:** Steuerkreuz links unten, Feuer-Taste rechts unten, Pause-Taste oben in der Mitte; das Tempo wird auf dem Titelbild gewählt.
 - Oben links zeigen ✔ und ✘ die richtigen und falschen Treffer der Runde.
 - Nach einem Fehler zeigt „Merke“ kurz die richtige Übersetzung.

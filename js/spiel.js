@@ -42,6 +42,14 @@
   let tempoName = "Normal";
   const tempoFaktor = () => TEMPO_FAKTOREN[tempoName];
 
+  // Schwierigkeit auf dem Titelbild eine Stufe weiter (dir = -1 links, +1 rechts).
+  // Bleibt innerhalb der Grenzen Langsam … Schnell.
+  function tempoWechseln(dir) {
+    const namen = Object.keys(TEMPO_FAKTOREN);
+    const i = namen.indexOf(tempoName);
+    tempoName = namen[Math.max(0, Math.min(namen.length - 1, i + dir))];
+  }
+
   // ---------- Ton (Web Audio, Standard aus) ----------
   let tonAn = false;
   let audioCtx = null; // wird erst beim Einschalten erzeugt (Benutzergeste nötig)
@@ -200,6 +208,11 @@
     tasten[e.code] = true;
     if (["Space", "Enter", "ArrowLeft", "ArrowRight"].includes(e.code)) {
       e.preventDefault();
+    }
+    // Titelbild: Pfeiltasten bzw. A/D wählen die Schwierigkeit, Leertaste startet.
+    if (status === "titel" && ["ArrowLeft", "KeyA", "ArrowRight", "KeyD"].includes(e.code)) {
+      tempoWechseln(["ArrowLeft", "KeyA"].includes(e.code) ? -1 : 1);
+      return;
     }
     if (e.code === "Space" || e.code === "Enter") {
       // Gehaltene Taste (Wiederholung) soll keine Aktion mehrfach auslösen.

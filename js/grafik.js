@@ -28,7 +28,7 @@ const Grafik = (() => {
   // Tempo-Schaltflächen auf dem Titelbild, nebeneinander zentriert (i = Index 0, 1, 2).
   function tempoRechteck(i) {
     const b = 190, h = 56, abstand = 20;
-    return { x: BREITE / 2 - (b * 3 + abstand * 2) / 2 + i * (b + abstand), y: 470, b, h };
+    return { x: BREITE / 2 - (b * 3 + abstand * 2) / 2 + i * (b + abstand), y: 496, b, h };
   }
 
   // ---------- Schrift ----------
@@ -258,7 +258,10 @@ const Grafik = (() => {
     ctx.fillStyle = "#8888aa";
     schrift(24);
     ctx.fillText("Tippen oder Leertaste zum Starten", BREITE / 2, 400);
-    ctx.fillText("Pfeiltasten bewegen · Leertaste schießt · Esc pausiert · M schaltet Ton", BREITE / 2, 438);
+    ctx.fillText("Pfeiltasten bewegen · Leertaste schießt · Esc pausiert · M schaltet Ton", BREITE / 2, 436);
+    // Beschriftung der Schwierigkeit (Tasten auf dem Titelbild)
+    schrift(20);
+    ctx.fillText("Schwierigkeit – mit ← → bzw. A/D wählen, Leertaste startet", BREITE / 2, 472);
 
     // Tempo-Einstellung: drei Schaltflächen, die gewählte ist hervorgehoben
     schrift(24, "bold");
@@ -275,13 +278,13 @@ const Grafik = (() => {
       ctx.fillText((gewaehlt ? "✔ " : "") + name, r.x + r.b / 2, r.y + r.h / 2);
     });
 
-    // Pixelschiff als Deko unten
+    // Pixelschiff als Deko unten (unterhalb der Schwierigkeit-Schaltflächen)
     ctx.fillStyle = "#ffcc4d";
-    ctx.fillRect(BREITE / 2 - 35, 500, 20, 8);
-    ctx.fillRect(BREITE / 2 + 15, 500, 20, 8);
-    ctx.fillRect(BREITE / 2 - 22, 508, 44, 16);
+    ctx.fillRect(BREITE / 2 - 35, 566, 20, 8);
+    ctx.fillRect(BREITE / 2 + 15, 566, 20, 8);
+    ctx.fillRect(BREITE / 2 - 22, 574, 44, 16);
     ctx.fillStyle = "#ff9d2e";
-    ctx.fillRect(BREITE / 2 - 10, 524, 20, 6);
+    ctx.fillRect(BREITE / 2 - 10, 590, 20, 6);
   }
 
   function zeichnePause() {
