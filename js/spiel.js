@@ -109,6 +109,7 @@
   let lebenWegZeigen = 0;    // Sekunden, in denen das gerade verlorene Herz weiß blinkt
   let explosion = null;      // { x, y, zeit }
   let gameoverSperre = 0;    // Sekunden, in denen das Game-over-Bild nicht wegklickbar ist
+  let hinweis = null;        // { en, de, zeit } – richtige Übersetzung nach einem Fehler
 
   // ---------- Wortliste ----------
   // Alle Units zu einer flachen Liste vereinigen (Daten aus wortlisten.js).
@@ -175,6 +176,7 @@
     schuss = null;
     explosion = null;
     trefferZeigen = null;
+    hinweis = null;
     pausiert = false;
     welle = 0;
     status = "wellenwechsel";
@@ -326,6 +328,8 @@
     leben--;
     // Jedes Wort höchstens einmal in der Übungsliste (kein Doppeleintrag).
     if (!verfehlteWoerter.some((w) => w.en === wort.en)) verfehlteWoerter.push(wort);
+    // Nach einem Fehler die richtige Übersetzung zeigen (Feedback zum Lernen).
+    hinweis = { en: wort.en, de: wort.de, zeit: 2.5 };
     lebenWegZeigen = 0.8;
     effektFalsch();
     if (leben <= 0) {
@@ -388,6 +392,10 @@
       explosion.zeit -= dt;
       if (explosion.zeit <= 0) explosion = null;
     }
+    if (hinweis) {
+      hinweis.zeit -= dt;
+      if (hinweis.zeit <= 0) hinweis = null;
+    }
 
     // Wellen-Ansage herunterzählen, dann nächste Welle starten.
     if (status === "wellenwechsel") {
@@ -442,7 +450,7 @@
       welle, leben, lebenMax: LEBEN_BILDSCHIRM, punkte,
       richtig: richtigZaehl, falsch: falschZaehl,
       aufgabe, wesenY, schuss, schiff, schildY: SCHILD_Y,
-      trefferZeigen, explosion, lebenWegZeigen, gameoverSperre,
+      trefferZeigen, hinweis, explosion, lebenWegZeigen, gameoverSperre,
       verfehlt: verfehlteWoerter, touchAktiv,
       skala, geraetBreite: canvas.width, geraetHoehe: canvas.height,
     };

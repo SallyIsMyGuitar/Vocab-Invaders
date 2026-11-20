@@ -140,6 +140,22 @@ const Grafik = (() => {
     });
   }
 
+  // Hinweis nach einem Fehler: die richtige Übersetzung, unter der Schildreihe.
+  // Mit dem Wort „Merke“ als Text, nicht nur durch Farbe gekennzeichnet.
+  function zeichneHinweis(a) {
+    if (!a.hinweis) return;
+    const y = a.schildY + SCHILD_HOEHE / 2 + 26;
+    const text = "Merke: " + a.hinweis.en + " = " + a.hinweis.de;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    schriftPassend(text, 560, 24, "bold");
+    const breite = ctx.measureText(text).width;
+    ctx.fillStyle = "rgba(16, 16, 36, 0.85)";
+    ctx.fillRect(BREITE / 2 - breite / 2 - 12, y - 18, breite + 24, 36);
+    ctx.fillStyle = "#ffcc4d";
+    ctx.fillText(text, BREITE / 2, y);
+  }
+
   function zeichneSchiff(a) {
     const x = a.schiff.x;
     const y = a.schiff.y;
@@ -413,6 +429,7 @@ const Grafik = (() => {
     if (a.status === "spielt") {
       zeichneWesen(a);
       zeichneSchilder(a);
+      zeichneHinweis(a);
       zeichneSchiff(a);
       zeichneSchuss(a);
       zeichneTouchTasten(a);

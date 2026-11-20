@@ -10,11 +10,14 @@ Von oben schweben Wörter herab. Das Schiff schießt die richtige deutsche Über
 - Auf dem iPad als Verknüpfung auf den Home-Bildschirm legen (Vollbild).
 - **PC:** Pfeiltasten oder A/D bewegen, Leertaste schießt, Esc pausiert, M schaltet den Ton.
 - **iPad:** Steuerkreuz links unten, Feuer-Taste rechts unten, Pause-Taste oben in der Mitte; das Tempo wird auf dem Titelbild gewählt.
+- Oben links zeigen ✔ und ✘ die richtigen und falschen Treffer der Runde.
+- Nach einem Fehler zeigt „Merke“ kurz die richtige Übersetzung.
+- Am Ende der Runde erscheint die Liste „Diese Wörter üben“ zur Nachbesprechung.
 - Ton ist standardmäßig aus.
 
 ## Technik
 
-- Reines HTML, CSS und JavaScript
+- Reines HTML, CSS und JavaScript (Grafik in `js/grafik.js`, Spielcode in `js/spiel.js`, Vokabeln in `js/wortlisten.js`)
 - Kein Server, keine externen Bibliotheken, kein Build-Schritt
 - Hosting über GitHub Pages
 - Es werden keine Daten gespeichert oder gesendet
