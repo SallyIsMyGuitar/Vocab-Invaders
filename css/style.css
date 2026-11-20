@@ -1,0 +1,19 @@
+/* Grundlayout: Das Spiel füllt das ganze Fenster, kein Scrollen. */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #101024;
+  font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Das Canvas nimmt die gesamte Bildschirmfläche ein (Querformat empfohlen). */
+#spielfeld {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  touch-action: none;
+}

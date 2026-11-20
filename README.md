@@ -16,8 +16,8 @@ Von oben schweben Wörter herab. Das Schiff schießt die richtige deutsche Über
 - Reines HTML, CSS und JavaScript
 - Kein Server, keine externen Bibliotheken, kein Build-Schritt
 - Hosting über GitHub Pages
-- Daten bleiben im Local Storage des Geräts, es werden keine Daten gesendet
+- Es werden keine Daten gespeichert oder gesendet
 
 ## Status
 
-Konzeptphase. Noch kein spielbarer Code. Der Stand und die offenen Fragen stehen in `AGENTS.md`.
+Meilenstein 1 ist umgesetzt und spielbar: Schiff, Bewegung, Schuss und eine Testwelle mit Vokabeln aus "Let's go English 2" (6. Klasse, Units 1–8). Der Stand und die offenen Fragen stehen in `AGENTS.md`.

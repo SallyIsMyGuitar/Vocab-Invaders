@@ -19,13 +19,13 @@ Diese Anweisung gilt dauerhaft für alle Arbeiten in diesem Projekt. Lies sie vo
 
 Ein Vokabel-Spiel für den Englischunterricht im Stil des Klassikers Space Invaders. Das Spiel dient zum Üben und Wiederholen, nicht zum Einführen. Die Lehrkraft führt die Vokabeln im Unterricht ein.
 
-- **Zielgruppe:** offen (Klassenstufe und Umfang der Vokabeln)
-- **Wortlisten:** offen (Lehrwerk, Lektionen, Format Englisch–Deutsch)
+- **Zielgruppe:** Klassenstufe 7. Das Spiel dient der Wiederholung von Vokabeln aus JGST 5 und 6.
+- **Wortlisten:** Vokabeln aus `js/wortlisten.js` (Quelle: PDF "Let's go English 2 – alle Vokabeln, 6. Klasse", Units 1–8). Eine Liste für JGST 5 liegt noch nicht vor (offen).
 
 ## Projektstand
 
-- Stand: Konzeptphase. Es gibt noch keinen spielbaren Code.
-- Geplante Dateien für den Prototyp: `index.html`, `css/style.css`, `js/spiel.js` (Spielschleife), `js/wortlisten.js` (Vokabeln), `js/speichern.js` (Local Storage).
+- Stand: Meilenstein 1 ist umgesetzt und spielbar (Schiff, Bewegung, Schuss, eine Testwelle mit Wörtern aus der Wortliste).
+- Dateien: `index.html`, `css/style.css`, `js/spiel.js` (Spielschleife), `js/wortlisten.js` (Vokabeln).
 
 ## Spielidee (Konzept „Vokabel-Abschuss“)
 
@@ -57,29 +57,28 @@ Ein Vokabel-Spiel für den Englischunterricht im Stil des Klassikers Space Invad
 
 - Die Wörter stehen in eigenen Dateien (`js/wortlisten.js`), getrennt vom Spielcode.
 - Pro Welle ein Wort-Set. Richtige und falsche Übersetzungen werden zufällig gemischt.
-- Antwortform: offen (Auswahl aus festen Übersetzungen oder Eingabe)
-- Zahlen, Zeitdruck und Tempo: offen
+- Antwortform: Auswahl aus vier festen Übersetzungen, eine davon richtig
+- Tempo: moderat und langsam steigend (siehe Abschnitt „Tempo und Fehlerstatistik“)
 
-## Speichern
+## Tempo und Fehlerstatistik (Entscheidung)
 
-- Automatisch im Local Storage (Schlüssel `vocab-invaders-v1`): Highscore, Fehlerstatistik je Wort, zuletzt gespielte Welle.
-- Zusätzlich ein Spielstand-Code als kompakter Text zum Kopieren, damit die Lehrkraft den Stand einsehen kann. Keine Übertragung von Daten.
-- Offen: Ob die Fehlerstatistik je Wort angezeigt wird.
+- **Tempo/Zeitdruck:** moderat. Die Wörter sinken langsam, pro Welle wird das Tempo nur leicht erhöht. Kein harter Countdown,
+  damit im Unterricht genug Zeit zum Nachdenken bleibt.
+- **Fehlerstatistik:** keine dauerhafte Speicherung. Während des Spiels zählt der Bildschirm richtige und falsche Treffer (✔/✘ in großer Schrift),
+  am Ende der Runde erscheint eine Liste der verfehlten Wörter für die Nachbesprechung im Unterricht.
+- Kein Local Storage, kein Spielstand-Code (zugunsten der Einfachheit entfallen).
 
 ## Meilensteine
 
 Gebaut wird immer nur der Meilenstein, den der Nutzer freigibt, mit Test nach jedem Schritt.
 
-1. Grundgerüst: Schiff, Bewegung, Schuss, eine Testwelle mit Beispielwörtern. – **offen**
-2. Wellen, Leben, Punkte, Wortlisten-Datei. – **offen**
+1. Grundgerüst: Schiff, Bewegung, Schuss, eine Testwelle mit Wörtern aus der Wortliste. – **fertig**
+2. Wellen, Leben, Punkte. – **offen**
 3. Steuerung auf dem iPad, Pause, Titelbild. – **offen**
-4. Speichern, Highscore, Spielstand-Code. – **offen**
-5. Feinschliff: Ton, Lesbarkeit, Tempo-Einstellungen. – **offen**
+4. Feinschliff: Ton, Lesbarkeit, Tempo-Einstellungen. – **offen**
 
 ## Offene Fragen (vor der Umsetzung mit dem Nutzer klären)
 
 - Klassenstufe und Vokabelumfang
-- Herkunft der Wortlisten
+- Wortliste für JGST 5 (die vorliegende PDF deckt nur Klasse 6 ab)
 - Antwortform (Auswahl oder Eingabe)
-- Zeitdruck und Tempo
-- Gerät und Spielstand-Code
