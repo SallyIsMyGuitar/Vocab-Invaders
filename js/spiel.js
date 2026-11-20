@@ -100,8 +100,9 @@
   const verfehlteWoerter = []; // für die Zusammenfassung am Ende
 
   let trefferZeigen = null;  // { index, richtig, zeit } – Haken/Kreuz über dem Schild
-  let lebenWegZeigen = 0;    // Sekunden, in denen der✔/✘- nach dem Leben zeigt
+  let lebenWegZeigen = 0;    // Sekunden, in denen das gerade verlorene Herz weiß blinkt
   let explosion = null;      // { x, y, zeit }
+  let gameoverSperre = 0;    // Sekunden, in denen das Game-over-Bild nicht wegklickbar ist
 
   // ---------- Wortliste ----------
   // Alle Units zu einer flachen Liste vereinigen (Daten aus wortlisten.js).
@@ -129,10 +130,13 @@
     if (kartenstapel.length === 0) kartenstapel = mischen(ALLE_WOERTER);
     const wort = kartenstapel.pop();
 
+    // Falsche Antworten dürfen keine Übersetzung sein, die zum gleichen
+    // englischen Wort passt (z. B. „letter“ = Brief und Buchstabe).
+    const eigene = ALLE_WOERTER.filter((w) => w.en === wort.en).map((w) => w.de);
     const falsch = [];
     while (falsch.length < ANTWORTEN_ANZAHL - 1) {
       const kandidat = zufall(ALLE_WOERTER).de;
-      if (kandidat !== wort.de && !falsch.includes(kandidat)) {
+      if (kandidat !== wort.de && !eigene.includes(kandidat) && !falsch.includes(kandidat)) {
         falsch.push(kandidat);
       }
     }
@@ -188,9 +192,14 @@
       e.preventDefault();
     }
     if (e.code === "Space" || e.code === "Enter") {
-      // Titel/Ende: neue Runde. Im Spiel: schießen.
-      if (status === "titel" || status === "gameover") {
+      // Gehaltene Taste (Wiederholung) soll keine Aktion mehrfach auslösen.
+      if (e.repeat) return;
+      // Titel: neue Runde. Game over: neue Runde, aber erst nach der Sperre.
+      // Im Spiel: schießen.
+      if (status === "titel") {
         rundeStarten();
+      } else if (status === "gameover") {
+        if (gameoverSperre <= 0) rundeStarten();
       } else if (status === "spielt" && !pausiert && schuss === null) {
         schuss = { x: schiff.x, y: schiff.y - schiff.hoehe };
       }
@@ -198,6 +207,12 @@
   });
   window.addEventListener("keyup", (e) => {
     tasten[e.code] = false;
+  });
+  // Verliert das Fenster den Fokus, gelten alle Tasten als losgelassen.
+  // Sonst würde das Schiff nach einem Fokuswechsel weiterfahren.
+  window.addEventListener("blur", () => {
+    for (const code in tasten) tasten[code] = false;
+    zeigerAuf.clear();
   });
 
   // ---------- Eingabe (Touch: iPad-Steuerkreuz und Feuertaste) ----------
@@ -252,10 +267,10 @@
     if (e.pointerType === "touch") touchModus = true;
     const p = zeigerPosition(e);
 
-    // Ton-Symbol oben rechts umschalten (nur solange es sichtbar ist).
+    // Ton-Symbol oben rechts umschalten (sichtbar außer auf dem Titelbild).
     const dxTon = p.x - (BREITE - 160);
     const dyTon = p.y - 28;
-    if (status === "spielt" && dxTon * dxTon + dyTon * dyTon <= 26 * 26) {
+    if (status !== "titel" && dxTon * dxTon + dyTon * dyTon <= 26 * 26) {
       tonUmschalten();
       return;
     }
@@ -271,7 +286,7 @@
       return;
     }
     if (status === "gameover") {
-      rundeStarten();
+      if (gameoverSperre <= 0) rundeStarten();
       return;
     }
     // Pause-Taste gilt nur im laufenden Spiel.
@@ -303,7 +318,8 @@
   // ---------- Spielablauf ----------
   function lebenVerlieren(wort) {
     leben--;
-    verfehlteWoerter.push(wort);
+    // Jedes Wort höchstens einmal in der Übungsliste (kein Doppeleintrag).
+    if (!verfehlteWoerter.some((w) => w.en === wort.en)) verfehlteWoerter.push(wort);
     trefferZeigen = null;
     lebenWegZeigen = 0.8;
     effektFalsch();
@@ -311,6 +327,7 @@
       status = "gameover";
       aufgabe = null;
       schuss = null;
+      gameoverSperre = 1.5; // kurze Sperre, damit die Liste gelesen werden kann
       effektGameover();
     }
   }
@@ -351,6 +368,19 @@
 
   function update(dt) {
     if (status === "titel") return;
+
+    // Anzeige-Timer laufen in jedem Zustand weiter (auch nach Game over),
+    // damit z. B. eine Explosion nicht eingefroren stehen bleibt.
+    if (gameoverSperre > 0) gameoverSperre -= dt;
+    if (lebenWegZeigen > 0) lebenWegZeigen -= dt;
+    if (trefferZeigen) {
+      trefferZeigen.zeit -= dt;
+      if (trefferZeigen.zeit <= 0) trefferZeigen = null;
+    }
+    if (explosion) {
+      explosion.zeit -= dt;
+      if (explosion.zeit <= 0) explosion = null;
+    }
 
     // Wellen-Ansage herunterzählen, dann nächste Welle starten.
     if (status === "wellenwechsel") {
@@ -396,15 +426,6 @@
       }
     }
 
-    if (trefferZeigen) {
-      trefferZeigen.zeit -= dt;
-      if (trefferZeigen.zeit <= 0) trefferZeigen = null;
-    }
-    if (lebenWegZeigen > 0) lebenWegZeigen -= dt;
-    if (explosion) {
-      explosion.zeit -= dt;
-      if (explosion.zeit <= 0) explosion = null;
-    }
   }
 
   // ---------- Zeichnen (Pixelgrafik per Code) ----------
@@ -569,7 +590,7 @@
     ctx.fillText("VOCAB INVADERS", BREITE / 2, 260);
     ctx.fillStyle = "#ffffff";
     ctx.font = "26px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
-    ctx.fillText("Vokabeln aus Klasse 5 und 6 – richtig übersetzt abgeschossen", BREITE / 2, 320);
+    ctx.fillText("Vokabeln aus Klasse 6 – richtig übersetzt abgeschossen", BREITE / 2, 320);
 
     ctx.fillStyle = "#8888aa";
     ctx.font = "24px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
@@ -627,11 +648,22 @@
     ctx.font = "bold 22px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
     ctx.fillText(tonAn ? "🔊" : "🔇", BREITE - 160, 16);
     ctx.textAlign = "left";
-    // Herzen: volle Herzen rot, verlorene nur als Umriss
+    // Herzen: volle Herzen rot (♥), verlorene als Umriss (♡) – nicht nur Farbe.
+    // Das gerade verlorene Herz blinkt kurz weiß.
     ctx.textAlign = "right";
     for (let i = 0; i < LEBEN_BILDSCHIRM; i++) {
-      ctx.fillStyle = i < leben ? (lebenWegZeigen > 0 && i === leben ? "#ffffff" : "#ff6b6b") : "#3a3a5a";
-      ctx.fillText("♥", BREITE - 40 - i * 36, 16);
+      const x = BREITE - 40 - i * 36;
+      if (i === leben && lebenWegZeigen > 0) {
+        // gerade verloren: kurz weißes, volles Herz
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText("♥", x, 16);
+      } else if (i < leben) {
+        ctx.fillStyle = "#ff6b6b";
+        ctx.fillText("♥", x, 16);
+      } else {
+        ctx.fillStyle = "#8888aa";
+        ctx.fillText("♡", x, 16);
+      }
     }
   }
 
@@ -673,21 +705,34 @@
       ctx.fillStyle = "#ffffff";
       ctx.font = "25px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
       ctx.fillText("Diese Wörter üben:", BREITE / 2, 265);
-      // bei vielen Fehlern die Liste begrenzen
-      const anzeigen = verfehlteWoerter.slice(-8);
-      ctx.font = "22px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
+      // Bis 16 Wörter: ab 9 Wörtern in zwei Spalten, damit alles auf den Bildschirm passt
+      const anzeigen = verfehlteWoerter.slice(0, 16);
+      const spalten = anzeigen.length > 8 ? 2 : 1;
+      const zeilen = Math.ceil(anzeigen.length / spalten);
       anzeigen.forEach((w, i) => {
-        ctx.fillText(w.en + " – " + w.de, BREITE / 2, 305 + i * 32);
+        const spalte = Math.floor(i / zeilen);
+        const zeile = i % zeilen;
+        const x = spalten === 1 ? BREITE / 2 : BREITE / 2 + (spalte === 0 ? -230 : 230);
+        schriftPassend(w.en + " – " + w.de, 420, 22);
+        ctx.fillText(w.en + " – " + w.de, x, 300 + zeile * 28);
       });
+      if (verfehlteWoerter.length > 16) {
+        ctx.fillStyle = "#8888aa";
+        ctx.font = "20px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
+        ctx.fillText("… und " + (verfehlteWoerter.length - 16) + " weitere", BREITE / 2, 300 + 8 * 28);
+      }
     } else {
       ctx.fillStyle = "#7bd844";
       ctx.font = "26px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
       ctx.fillText("Keine Fehler – super!", BREITE / 2, 300);
     }
 
-    ctx.fillStyle = "#8888aa";
-    ctx.font = "22px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
-    ctx.fillText("Leertaste oder Enter für eine neue Runde", BREITE / 2, HOEHE - 50);
+    // Hinweis erst nach der Sperre, damit niemand die Liste versehentlich überspringt
+    if (gameoverSperre <= 0) {
+      ctx.fillStyle = "#8888aa";
+      ctx.font = "22px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
+      ctx.fillText("Leertaste oder Tippen für eine neue Runde", BREITE / 2, HOEHE - 50);
+    }
   }
 
   function zeichnen() {
