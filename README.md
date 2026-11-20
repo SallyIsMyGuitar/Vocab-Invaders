@@ -20,4 +20,4 @@ Von oben schweben Wörter herab. Das Schiff schießt die richtige deutsche Über
 
 ## Status
 
-Meilensteine 1 und 2 sind umgesetzt und spielbar: Schiff, Bewegung, Schuss, Wellen mit steigendem Tempo, Leben und Punkte – mit Vokabeln aus "Let's go English 2" (6. Klasse, Units 1–8). Der Stand und die offenen Fragen stehen in `AGENTS.md`.
+Meilensteine 1–3 sind umgesetzt und spielbar: Schiff, Bewegung, Schuss, Wellen mit steigendem Tempo, Leben, Punkte, Titelbild, Pause und Touch-Steuerung – mit Vokabeln aus "Let's go English 2" (6. Klasse, Units 1–8). Der Stand und die offenen Fragen stehen in `AGENTS.md`.

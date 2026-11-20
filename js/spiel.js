@@ -1,6 +1,7 @@
 // Vocab Invaders – Spielcode
 // Meilenstein 1: Grundgerüst (Schiff, Bewegung, Schuss).
 // Meilenstein 2: Wellen mit steigendem Tempo, Leben, Punkte.
+// Meilenstein 3: Titelbild, Pause, Touch-Steuerung fürs iPad.
 // Grafik wird komplett per Code auf das Canvas gezeichnet, keine Bilddateien.
 
 (() => {
@@ -45,8 +46,10 @@
   const SCHILD_Y = schiff.y - 110; // Höhe der Antwort-Schilder
 
   // ---------- Spielzustand ----------
-  // "spielt" | "wellenwechsel" | "gameover"
-  let status = "wellenwechsel";
+  // "titel" | "wellenwechsel" | "spielt" | "gameover"
+  let status = "titel";
+  let pausiert = false;      // Pause während des Spiels (Esc oder iPad-Taste)
+  let touchModus = false;    // Touch-Tasten zeigen, sobald erstmals getippt wurde
   let welle = 0;
   let leben = 0;
   let punkte = 0;
@@ -115,32 +118,111 @@
     status = "spielt";
   }
 
-  function spielStarten() {
+  // Neue Runde: Werte zurücksetzen, kurze Ansage, dann startet Welle 1.
+  function rundeStarten() {
     leben = LEBEN_BILDSCHIRM;
     punkte = 0;
     verfehlteWoerter.length = 0;
-    welleStarten(1);
+    schuss = null;
+    explosion = null;
+    trefferZeigen = null;
+    pausiert = false;
+    welle = 0;
+    status = "wellenwechsel";
+    wellenWechselRest = WELLE_PAUSZEIT;
   }
 
   // ---------- Eingabe (PC-Tastatur) ----------
   const tasten = {};
   window.addEventListener("keydown", (e) => {
+    // Esc pausiert das Spiel (PC), unabhängig von anderen Tasten.
+    if (e.code === "Escape" && status === "spielt") {
+      e.preventDefault();
+      pausiert = !pausiert;
+      return;
+    }
     tasten[e.code] = true;
     if (["Space", "Enter", "ArrowLeft", "ArrowRight"].includes(e.code)) {
       e.preventDefault();
     }
     if (e.code === "Space" || e.code === "Enter") {
-      // Im Spiel schießen, nach dem Ende eine neue Runde starten.
-      if (status === "spielt" && schuss === null) {
+      // Titel/Ende: neue Runde. Im Spiel: schießen.
+      if (status === "titel" || status === "gameover") {
+        rundeStarten();
+      } else if (status === "spielt" && !pausiert && schuss === null) {
         schuss = { x: schiff.x, y: schiff.y - schiff.hoehe };
-      } else if (status === "gameover") {
-        spielStarten();
       }
     }
   });
   window.addEventListener("keyup", (e) => {
     tasten[e.code] = false;
   });
+
+  // ---------- Eingabe (Touch: iPad-Steuerkreuz und Feuertaste) ----------
+  // Der Finger bleibt so lange auf einer Taste, wie der Zeiger existiert.
+  const zeigerAuf = new Map();   // pointerId -> "links" | "rechts" | "feuer" | "pause"
+
+  // Bildschirm-Koordinate in Spielfeld-Koordinate umrechnen.
+  function zeigerPosition(e) {
+    const dpr = canvas.width / window.innerWidth;
+    const offX = (canvas.width - BREITE * skala) / 2;
+    const offY = (canvas.height - HOEHE * skala) / 2;
+    return {
+      x: (e.clientX * dpr - offX) / skala,
+      y: (e.clientY * dpr - offY) / skala,
+    };
+  }
+
+  // Prüft, welchen Bereich eines Touch-Bildschirms ein Punkt trifft.
+  function flaecheTreffen(p) {
+    if (status === "spielt") {
+      // Steuerkreuz links unten: zwei breite Pfeil-Tasten
+      if (p.x >= 30 && p.x <= 130 && p.y >= HOEHE - 150 && p.y <= HOEHE - 30) return "links";
+      if (p.x >= 150 && p.x <= 250 && p.y >= HOEHE - 150 && p.y <= HOEHE - 30) return "rechts";
+      // Feuertaste rechts unten: großer Kreis
+      const dx = p.x - (BREITE - 110);
+      const dy = p.y - (HOEHE - 90);
+      if (dx * dx + dy * dy <= 65 * 65) return "feuer";
+      // Pause-Taste oben in der Mitte
+      if (p.x >= BREITE / 2 - 30 && p.x <= BREITE / 2 + 30 && p.y >= 14 && p.y <= 58) return "pause";
+    }
+    return null;
+  }
+
+  canvas.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "touch") touchModus = true;
+    const p = zeigerPosition(e);
+
+    // Auf dem Titel oder nach dem Ende startet ein Tipp die nächste Runde.
+    if (status === "titel" || status === "gameover") {
+      rundeStarten();
+      return;
+    }
+    // Pause-Taste gilt nur im laufenden Spiel.
+    const flaeche = flaecheTreffen(p);
+    if (flaeche === "pause") {
+      pausiert = !pausiert;
+      return;
+    }
+    if (status === "spielt" && !pausiert && flaeche) {
+      zeigerAuf.set(e.pointerId, flaeche);
+      if (flaeche === "feuer" && schuss === null) {
+        schuss = { x: schiff.x, y: schiff.y - schiff.hoehe };
+      }
+    }
+    if (e.pointerType === "touch") e.preventDefault();
+  });
+  const zeigerLoeschen = (e) => zeigerAuf.delete(e.pointerId);
+  canvas.addEventListener("pointerup", zeigerLoeschen);
+  canvas.addEventListener("pointercancel", zeigerLoeschen);
+
+  // Touch-Enden abfragen: Taste gehalten, solange ein Zeiger darauf liegt.
+  function touchAktiv(name) {
+    for (const flaeche of zeigerAuf.values()) {
+      if (flaeche === name) return true;
+    }
+    return false;
+  }
 
   // ---------- Spielablauf ----------
   function lebenVerlieren(wort) {
@@ -188,17 +270,26 @@
   }
 
   function update(dt) {
+    if (status === "titel") return;
+
     // Wellen-Ansage herunterzählen, dann nächste Welle starten.
     if (status === "wellenwechsel") {
       wellenWechselRest -= dt;
       if (wellenWechselRest <= 0) welleStarten(welle + 1);
       return;
     }
-    if (status !== "spielt") return;
+    if (status !== "spielt" || pausiert) return;
 
-    // Bewegung des Schiffs
-    if (tasten["ArrowLeft"] || tasten["KeyA"]) schiff.x -= schiff.geschwindigkeit * dt;
-    if (tasten["ArrowRight"] || tasten["KeyD"]) schiff.x += schiff.geschwindigkeit * dt;
+    // Bewegung des Schiffs: Tastatur oder Steuerkreuz
+    const links = tasten["ArrowLeft"] || tasten["KeyA"] || touchAktiv("links");
+    const rechts = tasten["ArrowRight"] || tasten["KeyD"] || touchAktiv("rechts");
+    if (links) schiff.x -= schiff.geschwindigkeit * dt;
+    if (rechts) schiff.x += schiff.geschwindigkeit * dt;
+
+    // Feuertaste gedrückt halten schießt, sobald der Schuss frei ist.
+    if (touchAktiv("feuer") && schuss === null) {
+      schuss = { x: schiff.x, y: schiff.y - schiff.hoehe };
+    }
     schiff.x = Math.max(schiff.breite / 2, Math.min(BREITE - schiff.breite / 2, schiff.x));
 
     if (!aufgabe) return;
@@ -322,6 +413,97 @@
     }
   }
 
+  // Zeichnet eine halbtransparente Taste mit dickem Umriss (Touch, iPad).
+  function zeichneTouchTasten() {
+    if (!touchModus) return;
+    ctx.globalAlpha = 0.4;
+
+    // Steuerkreuz links unten: Pfeil links
+    ctx.fillStyle = touchAktiv("links") ? "#8888aa" : "#ffffff";
+    ctx.fillRect(30, HOEHE - 150, 100, 120);
+    ctx.fillStyle = "#101024";
+    ctx.beginPath();
+    ctx.moveTo(70, HOEHE - 120);
+    ctx.lineTo(45, HOEHE - 90);
+    ctx.lineTo(70, HOEHE - 60);
+    ctx.closePath();
+    ctx.fill();
+
+    // Pfeil rechts
+    ctx.fillStyle = touchAktiv("rechts") ? "#8888aa" : "#ffffff";
+    ctx.fillRect(150, HOEHE - 150, 100, 120);
+    ctx.fillStyle = "#101024";
+    ctx.beginPath();
+    ctx.moveTo(210, HOEHE - 120);
+    ctx.lineTo(235, HOEHE - 90);
+    ctx.lineTo(210, HOEHE - 60);
+    ctx.closePath();
+    ctx.fill();
+
+    // Feuer-Taste rechts unten: großer Kreis
+    ctx.fillStyle = touchAktiv("feuer") ? "#8888aa" : "#ffffff";
+    ctx.beginPath();
+    ctx.arc(BREITE - 110, HOEHE - 90, 65, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#101024";
+    ctx.font = "bold 26px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("FEUER", BREITE - 110, HOEHE - 90);
+
+    // Pause-Taste oben in der Mitte (zwei Balken)
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(BREITE / 2 - 18, 22, 10, 28);
+    ctx.fillRect(BREITE / 2 + 8, 22, 10, 28);
+
+    ctx.globalAlpha = 1;
+  }
+
+  function zeichneTitel() {
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    // Pixel-Wesen über dem Titel, dazu Schiff und Sternenfeld (Hintergrund ist schon da)
+    ctx.fillStyle = "#7bd844";
+    ctx.fillRect(BREITE / 2 - 30, 130, 60, 40);
+    ctx.fillRect(BREITE / 2 - 42, 144, 84, 12);
+    ctx.fillStyle = "#101024";
+    ctx.fillRect(BREITE / 2 - 16, 162, 12, 10);
+    ctx.fillRect(BREITE / 2 + 6, 162, 12, 10);
+
+    ctx.fillStyle = "#ffcc4d";
+    ctx.font = "bold 64px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
+    ctx.fillText("VOCAB INVADERS", BREITE / 2, 260);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "26px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
+    ctx.fillText("Vokabeln aus Klasse 5 und 6 – richtig übersetzt abgeschossen", BREITE / 2, 320);
+
+    ctx.fillStyle = "#8888aa";
+    ctx.font = "24px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
+    ctx.fillText("Tippen oder Leertaste zum Starten", BREITE / 2, 400);
+    ctx.fillText("Pfeiltasten bewegen · Leertaste schießt · Esc pausiert", BREITE / 2, 440);
+
+    // Pixelschiff als Deko unten
+    ctx.fillStyle = "#ffcc4d";
+    ctx.fillRect(BREITE / 2 - 35, 500, 20, 8);
+    ctx.fillRect(BREITE / 2 + 15, 500, 20, 8);
+    ctx.fillRect(BREITE / 2 - 22, 508, 44, 16);
+    ctx.fillStyle = "#ff9d2e";
+    ctx.fillRect(BREITE / 2 - 10, 524, 20, 6);
+  }
+
+  function zeichnePause() {
+    ctx.fillStyle = "rgba(16, 16, 36, 0.8)";
+    ctx.fillRect(0, 0, BREITE, HOEHE);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 44px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
+    ctx.fillText("Pause", BREITE / 2, HOEHE / 2 - 20);
+    ctx.fillStyle = "#8888aa";
+    ctx.font = "24px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
+    ctx.fillText("Esc oder Pause-Taste zum Weiterspielen", BREITE / 2, HOEHE / 2 + 30);
+  }
+
   function zeichneKopfzeile() {
     // Welle, Punkte und Leben in großer Schrift, Symbole statt reiner Farbe
     ctx.font = "bold 24px -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
@@ -401,6 +583,10 @@
       (canvas.height - HOEHE * skala) / 2
     );
     zeichneHintergrund();
+    if (status === "titel") {
+      zeichneTitel();
+      return;
+    }
     if (status === "wellenwechsel") {
       // Zwischen den Wellen bleibt der Hintergrund mit Sternen sichtbar.
       zeichneWellenAnsage();
@@ -412,6 +598,8 @@
       zeichneSchilder();
       zeichneSchiff();
       zeichneSchuss();
+      zeichneTouchTasten();
+      if (pausiert) zeichnePause();
     }
     zeichneExplosion();
     if (status === "gameover") zeichneGameover();
@@ -427,10 +615,8 @@
     requestAnimationFrame(schleife);
   }
 
-  // Start: kurze Ansage, dann beginnt Welle 1 automatisch.
-  status = "wellenwechsel";
-  welle = 0;
-  wellenWechselRest = WELLE_PAUSZEIT;
+  // Start: Titelbild. Die erste Welle beginnt nach Tastendruck oder Tipp.
+  status = "titel";
   leben = LEBEN_BILDSCHIRM;
   requestAnimationFrame(schleife);
 })();
